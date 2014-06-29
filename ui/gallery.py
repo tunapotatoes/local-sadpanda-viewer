@@ -80,31 +80,7 @@ class C_QGallery(QtGui.QFrame):
         self.horizontalLayout_3.addLayout(self.horizontalLayout)
         self.verticalLayout.addLayout(self.horizontalLayout_3)
         self.gridLayout_2.addLayout(self.verticalLayout, 0, 0, 1, 1)
-
         self.retranslateUi()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        
-
-        
 
         # My manual stuff:
         #self.setContentsMargins(9, 9, 9, 9)
