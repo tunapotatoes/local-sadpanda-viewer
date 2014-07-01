@@ -43,20 +43,20 @@ gender/type (E.G female:tag, male:tag).
 
 FAQ
 ---------------------
-Will this get me banned?
+### Will this get me banned?
 
 It shouldn't. The request limiter is very careful and should never result in a
-ban. The only time you could possible get banned using this is if you ran
+ban. The only time you could possibly get banned using this is if you ran
 multiple copies of this on the same network, or were agressively browsing EX/EH
 while the program is running.
 
 
-Why is it so slow?
+### Why is it so slow?
 
 So you don't banned, see above.
 
 
-What are the different gallery options for?
+### What are the different gallery options for?
 
 "Search directories for galleries" will search your specified directories for
 all galleries in it. Ones that have metadata will be displayed. Use this if you
@@ -70,7 +70,7 @@ galleries, regardless of whether they have metadata already or not. Use with
 caution, this will take a long time for large collections.
 
 
-The program is displaying the wrong tags/title for a gallery!
+### The program is displaying the wrong tags/title for a gallery!
 
 Please send me information regarding that gallery (a link). Note that I don't
 consider getting a different language gallery as a mistake (E.G if your gallery
@@ -78,14 +78,14 @@ is in English and I get the tags for the Chinese version that isn't an
 error/mistake).
 
 
-The program is showing the wrong image for a gallery!
+### The program is showing the wrong image for a gallery!
 
 The image displayed is the first image in the gallery, ignoring case.
 Remove/rename the offending file. And complain to whoever did the naming for
 that gallery.
 
 
-The program failed to display a gallery!
+### The program failed to display a gallery!
 
 This means it failed to find it on EX/EH. There are a few reasons for this, but
 to determine if it is a bug I need details.
