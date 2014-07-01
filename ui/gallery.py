@@ -7,7 +7,7 @@ This shit is why I don't do Qt from hand.
 
 
 class C_QGallery(QtGui.QFrame):
-    def __init__(self, parent=None, gallery=None, **kwargs):
+    def __init__(self, parent=None, gallery=None, image=None, **kwargs):
         super(C_QGallery, self).__init__(parent)
         self.gridLayout_2 = QtGui.QGridLayout()
         self.gridLayout_2.setObjectName("gridLayout_2")
@@ -87,38 +87,28 @@ class C_QGallery(QtGui.QFrame):
         self.setLayout(self.gridLayout_2)
         self.gallery = gallery
         self.openButton.clicked.connect(self.openFile)
-        self.setImage()
+        self.image.setPixmap(QtGui.QPixmap().fromImage(image))
+        self.title.setText(self.gallery.local_metadata["gmetadata"]["title"])
+        self.rating.setText("Rating: %s" % self.gallery.local_metadata[
+            "gmetadata"]["rating"])
+        self._setToolTip()
         self.setFixedSize(250, 400)
         self.hide()
-        
 
     def retranslateUi(self):
         # Not planning on translating shit so I'll probably just ax this later
         self.title.setText(QtGui.QApplication.translate("Form", "Title", None, QtGui.QApplication.UnicodeUTF8))
-        self.editButton.setText(QtGui.QApplication.translate("Form", "Edit", None, QtGui.QApplication.UnicodeUTF8))
+        self.editButton.setText(QtGui.QApplication.translate("Form", "TODO", None, QtGui.QApplication.UnicodeUTF8))
         self.rating.setText(QtGui.QApplication.translate("Form", "TextLabel", None, QtGui.QApplication.UnicodeUTF8))
         self.openButton.setText(QtGui.QApplication.translate("Form", "Open", None, QtGui.QApplication.UnicodeUTF8))
         self.setProperty("class", QtGui.QApplication.translate("Form", "sidebarFrame", None, QtGui.QApplication.UnicodeUTF8))
-
-    # using camelCase because that is what Qt uses
-
 
     def openFile(self):
         QtGui.QDesktopServices.openUrl(QtCore.QUrl.fromLocalFile(
             self.gallery.files[0]))
 
-    def setImage(self):
-        self.image.setPixmap(QtGui.QPixmap(
-            self.gallery.files[0]).scaledToWidth(
-                self.gallery.parent.config["image_width"],
-                QtCore.Qt.SmoothTransformation))
-        #self.image.setStyleSheet("border:3px solid black; border-radius: 5px;background-color: transparent;")
-        self.title.setText(self.gallery.local_metadata["gmetadata"]["title"])
-        self.setToolTip()
-
-    def setToolTip(self):
+    def _setToolTip(self):
         tooltip = "Tags: "
         for tag in self.gallery.local_metadata["gmetadata"]["tags"]:
             tooltip += tag + " "
-        self.image.setToolTip(tooltip)
-        
+        self.setToolTip(tooltip)

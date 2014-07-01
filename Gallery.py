@@ -25,6 +25,10 @@ class LocalGallery(object):
             self.WebGallery = WebGallery(gallery_id=self.local_metadata["gmetadata"]["gid"],
                                          gallery_token=self.local_metadata["gmetadata"]["token"])
 
+    def __del__(self):
+        self.C_QGallery = None
+        self.WebGallery = None
+
     def has_metadata(self):
         return os.path.exists(self.metadata_file)
 
@@ -124,10 +128,11 @@ class WebGallery(object):
 
 def clean(string):
     "Removes chars that cause problems with ex"
-    banned_chars = ["=", "-", ":", "|", "~", "+", "]", "[", ".", ","]
-    string = re.sub(r'\([^)]*\)', ' ', string)
-    string = re.sub(r'\{[^}]*\}', ' ', string)
-    #string = re.sub(r'\[[^]]*\]', ' ', string)
+    banned_chars = ["=", "-", ":", "|", "~", "+", "]", "[", ".", ",", ")", "("]
+    #string = re.sub(r"\([^)]*\)", " ", string)
+    string = re.sub(r"\{[^}]*\}", " ", string)
+    #string = re.sub(r"\[[^]]*\]", " ", string)
+    string = re.sub(r"[\w]*[\-][\w]*", " ", string)
     for char in banned_chars:
         string = string.replace(char, " ")
     return string

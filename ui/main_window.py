@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'ui/test_main.ui'
+# Form implementation generated from reading ui file 'ui_src/main_window.ui'
 #
-# Created: Sun Jun 29 02:50:50 2014
+# Created: Mon Jun 30 01:33:48 2014
 #      by: pyside-uic 0.2.15 running on PySide 1.2.2
 #
 # WARNING! All changes made in this file will be lost!
@@ -12,7 +12,7 @@ from PySide import QtCore, QtGui
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(1000, 750)
+        MainWindow.resize(1101, 843)
         MainWindow.setAutoFillBackground(False)
         MainWindow.setStyleSheet("\n"
 "background: #34353b;\n"
@@ -35,6 +35,7 @@ class Ui_MainWindow(object):
         self.gridLayout_2 = QtGui.QGridLayout(self.scrollFrame)
         self.gridLayout_2.setObjectName("gridLayout_2")
         self.scrollArea = QtGui.QScrollArea(self.scrollFrame)
+        self.scrollArea.setEnabled(True)
         self.scrollArea.setAutoFillBackground(True)
         self.scrollArea.setStyleSheet("#scrollArea {\n"
 "background: #4f535b;\n"
@@ -45,6 +46,7 @@ class Ui_MainWindow(object):
 "color: #F1F1F1;\n"
 "border: 1px solid black;\n"
 "background: #34353b;\n"
+"min-height: 19;\n"
 "}\n"
 "\n"
 "QFrame.sidebarFrame {\n"
@@ -122,7 +124,7 @@ class Ui_MainWindow(object):
         self.scrollArea.setWidgetResizable(True)
         self.scrollArea.setObjectName("scrollArea")
         self.scrollAreaWidgetContents = QtGui.QWidget()
-        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 706, 712))
+        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 807, 805))
         self.scrollAreaWidgetContents.setObjectName("scrollAreaWidgetContents")
         self.scrollArea.setWidget(self.scrollAreaWidgetContents)
         self.gridLayout_2.addWidget(self.scrollArea, 0, 0, 1, 1)
@@ -141,6 +143,11 @@ class Ui_MainWindow(object):
 "background: #4f535b;\n"
 "border: 1px solid black;\n"
 "}\n"
+"\n"
+"QCheckBox::indicator {\n"
+"     width: 18px;\n"
+"     height: 18px;\n"
+" }\n"
 "\n"
 "QFrame.sidebarFrame {\n"
 "\n"
@@ -279,6 +286,9 @@ class Ui_MainWindow(object):
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.forceBox.sizePolicy().hasHeightForWidth())
         self.forceBox.setSizePolicy(sizePolicy)
+        self.forceBox.setStyleSheet("")
+        self.forceBox.setIconSize(QtCore.QSize(10, 10))
+        self.forceBox.setChecked(False)
         self.forceBox.setObjectName("forceBox")
         self.verticalLayout_2.addWidget(self.forceBox)
         self.horizontalLayout_4 = QtGui.QHBoxLayout()

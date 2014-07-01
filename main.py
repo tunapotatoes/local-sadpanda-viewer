@@ -1,66 +1,32 @@
 #!/usr/bin/python2
 
+from PySide import QtCore, QtGui
+from decimal import Decimal
 import json
 import sys
 import io
 import os
 import re
 import copy
-import threading
-from PySide import QtCore, QtGui
 import Gallery
 import Request
+import Threads
 from ui.main_window import Ui_MainWindow
-from ui.settings import Ui_Form as Ui_Settings
 from ui.flow import FlowLayout
 from ui.gallery import C_QGallery
 
 
-class FindThread(threading.Thread):
-    def __init__(self, parent, **kwargs):
-        threading.Thread.__init__(self)
-        self.parent = parent
-        self.kwargs = kwargs
-        initial_thread = self.parent.threads.get("it", None)
-        while initial_thread is not None and initial_thread.isAlive():
-            continue
-        force = self.kwargs.get("force", False)
-        self.temp_galleries = [g for g in self.parent.galleries if
-                               not g.has_metadata() or force]
-
-    def run(self):
-        self._find_galleries(self.temp_galleries, **self.kwargs)
-        self.temp_galleries = [g for g in self.temp_galleries if
-                               g.WebGallery is not None]
-        self._get_metadata(self.temp_galleries, **self.kwargs)
-
-    def _find_galleries(self, galleries, **kwargs):
-        for gallery in galleries:
-            gallery.search()
-
-    def _get_metadata(self, galleries, **kwargs):
-        if len(galleries) == 0:
-            return
-        data = copy.deepcopy(self.parent.config["base_request"])
-        for gallery in galleries[:self.parent.config["API_MAX_ENTRIES"]]:
-            data["gidlist"].append(gallery.WebGallery.gid)
-        if len(data["gidlist"]) == 0:
-            return
-        request = self.parent.request_object.request(
-            self.parent.config["API_URL"], "post", data)
-        for gallery in galleries[:self.parent.config["API_MAX_ENTRIES"]]:
-            for metadata in request.json()["gmetadata"]:
-                if gallery.WebGallery.validate_data(metadata):
-                    gallery.save_metadata(metadata)
-                    break
-        self._get_metadata(galleries[self.parent.config["API_MAX_ENTRIES"]:],
-                           **kwargs)
+class Program(QtGui.QApplication):
+    def __init__(self, args):
+        super(Program, self).__init__(args)
+        self.main_window = MainWindow(self)
 
 
 class MainWindow(QtGui.QMainWindow):
     def __init__(self, app):
         super(MainWindow, self).__init__()
         self.app = app
+        self.config_file = os.path.expanduser("~/.sadpanda.config")
         self.request_object = Request.RequestObject(self)
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
@@ -70,15 +36,93 @@ class MainWindow(QtGui.QMainWindow):
         self.ui.refreshButton.clicked.connect(self.refresh)
         self.ui.submitSettings.clicked.connect(self.save_settings)
         self.ui.cancelSettings.clicked.connect(self.load_settings)
+        self.buttons = {"searchButton": self.ui.searchButton,
+                        "refreshButton": self.ui.refreshButton,
+                        "submitButton": self.ui.submitSettings,
+                        "cancelButton": self.ui.cancelSettings}
+        self.progress = Decimal(0.0)
         self.ui.statusFrame.hide()
         self.galleries = []
-        # Right now only using one thread, but might have more in the future
+        # Right now only using two threads, but might have more in the future
         self.threads = {}
         self.show()
         self.find_galleries()
 
+    def inc_progress(self, val):
+        "I have reasons for doing this"
+        # TODO explain reasons for doing this
+        val *= Decimal(100)
+        self.ui.statusFrame.show()
+        self.progress += val
+        self.ui.progressBar.setValue(self.progress)
+
+    def disable_buttons(self, buttons=[]):
+        if len(buttons) == 0:
+            for button in self.buttons:
+                self.buttons[button].setEnabled(False)
+        else:
+            for button in buttons:
+                self.buttons[button].setEnabled(False)
+
+    def enable_buttons(self, buttons=[]):
+        if len(buttons) == 0:
+            for button in self.buttons:
+                self.buttons[button].setEnabled(True)
+        else:
+            for button in buttons:
+                self.buttons[button].setEnabled(True)
+
+    def find_galleries(self):
+        self.disable_buttons()
+        self._find_galleries()
+        self.progress = Decimal(0.0)
+        self.threads["it"] = Threads.ImageThread(self)
+        self.threads["it"].start()
+
+    def image_thread_done(self):
+        self.ui.statusFrame.hide()
+        self.threads.pop("it")
+        self.progress = Decimal(0.0)
+        self.enable_buttons()
+
+    def rest_thread_done(self):
+        self.ui.statusFrame.hide()
+        self.threads.pop("rt")
+        self.progress = Decimal(0.0)
+        self.enable_buttons(["refreshButton", "submitButton", "cancelButton"])
+        self.find_galleries()
+
+    def _find_galleries(self):
+        self.hide_all_galleries()
+        self.remove_all_galleries()
+        for folder in self.config["dirs"]:
+            folder = os.path.expanduser(folder)
+            bool_skip = True
+            for path, dirs, files in os.walk(folder):
+                if bool_skip:
+                    bool_skip = False
+                    continue
+                self.galleries.append(Gallery.LocalGallery(self, path))
+
+    def remove_all_galleries(self):
+        for gallery in self.galleries:
+            try:
+                gallery.C_QGallery.gallery = None
+                gallery.C_QGallery = None
+                gallery = None
+            except:
+                pass
+        self.galleries = []
+
+    def add_gallery_image(self, gallery, image):
+        gallery.C_QGallery = C_QGallery(self.ui.scrollArea, gallery, image)
+        self.ui.flowLayout.addWidget(gallery.C_QGallery)
+        gallery.C_QGallery.show()
+
     def load_settings(self):
-        config_file = io.open("config.json", "r", encoding="utf-8")
+        if not os.path.exists(self.config_file):
+            self._write_default_config()
+        config_file = io.open(self.config_file, "r", encoding="utf-8")
         self.config = json.load(config_file)
         config_file.close()
         self.ui.memberId.setText(self.config["COOKIES"]["ipb_member_id"])
@@ -90,36 +134,32 @@ class MainWindow(QtGui.QMainWindow):
     def save_settings(self):
         self.config["COOKIES"]["ipb_member_id"] = self.ui.memberId.text()
         self.config["COOKIES"]["ipb_pass_hash"] = self.ui.passHash.text()
+        old_dirs = self.config["dirs"]
         self.config["dirs"] = []
         for line in self.ui.directories.toPlainText().splitlines():
             self.config["dirs"].append(line)
-        config_file = open("config.json", "w")
+        config_file = open(self.config_file, "w")
         json_data = json.dumps(self.config, ensure_ascii=False).encode("utf8")
         config_file.write(json_data)
         config_file.close()
-
-    def resizeEvent(self, event):
-        event.accept()
+        if old_dirs != self.config["dirs"]:
+            self.find_galleries()
 
     def refresh(self):
         if self.ui.refBox.isChecked():
             self.find_galleries()
-        if self.ui.forceBox.isChecked():
-            self.force()
-        elif self.ui.metaBox.isChecked():
-            self.get_metadata()
-
-    def force(self):
-        self.get_metadata(force=True)
+        if self.ui.metaBox.isChecked() or self.ui.forceBox.isChecked():
+            self.get_metadata(force=self.ui.forceBox.isChecked())
 
     def get_metadata(self, **kwargs):
         # Keep this on seperate thread because it takes forever and the ui
         # would freeze otherwise
-        self.threads["ft"] = FindThread(self, **kwargs)
-        self.threads["ft"].start()
+        self.disable_buttons(["refreshButton", "submitButton", "cancelButton"])
+        self.threads["rt"] = Threads.RestThread(self, **kwargs)
+        self.threads["rt"].start()
 
     def _kill_threads(self):
-        for key in self.threads.keys():
+        for key in self.threads:
             if self.threads[key].isAlive():
                 self.threads[key]._Thread__stop()
 
@@ -137,35 +177,51 @@ class MainWindow(QtGui.QMainWindow):
         if search_text == "":
             self.show_all_galleries()
         else:
-            quoted_words = re.findall(r"\"(.+?)\"", search_text)
-            for word in quoted_words:
-                word = word.replace(" ", "_")
-            search_test = search_text.replace("\"", "")
-            #print re.findall(r"-(.+?)", search_text)
-            self._set_visible(search_test.split())
+            filter_words = re.findall(r"[\"]?[\-][\"]?([\w]*)[\"]?",
+                                      search_text)
+            search_text = re.sub(r"[\"]?[\-][\"]?([\w]*)[\"]?", "",
+                                 search_text)
+            filter_words = [w.replace(" ", "_").lower() for w in filter_words]
+            quoted_words = re.findall(r"\"([^-].+?)\"", search_text)
+            quoted_words = [w.replace(" ", "_") for w in quoted_words]
+            words = re.sub(r"\"([^-].+?)\"", "", search_text)
+            words = words.split() + quoted_words
+            words = [w.replace("\"", "").lower() for w in words]
+            self._set_visible(words, filter_words)
 
         self.ui.searchButton.setEnabled(True)
 
-    def _set_visible(self, search):
+    def _set_visible(self, search, filters=[]):
         galleries = [g for g in self.galleries if g.has_metadata()]
         for gallery in galleries:
-            tags = [t.lower() for t in gallery.local_metadata[
-                "gmetadata"]["tags"]]
-            for word in search:
-                #print gallery.local_metadata["gmetadata"]["title"]
-                if (word.lower() in tags or word.lower() in
-                   gallery.local_metadata["gmetadata"]["title"].lower()):
-                    self.ui.flowLayout.addWidget(gallery.C_QGallery)
-                    gallery.C_QGallery.setVisible(True)
-                else:
-                    self.ui.flowLayout.removeWidget(gallery.C_QGallery)
-                    gallery.C_QGallery.setVisible(False)
+            tags = [t.replace(" ", "_").lower() for t in
+                    gallery.local_metadata["gmetadata"]["tags"]]
+            title = gallery.local_metadata["gmetadata"]["title"].lower()
+            if any(w in tags for w in filters) or self._tag_in_title(filters,
+                                                                     title):
+                self.ui.flowLayout.removeWidget(gallery.C_QGallery)
+                gallery.C_QGallery.setVisible(False)
+                continue
+            if (any(w in tags for w in search) or len(
+                    search) == 0 or self._tag_in_title(search, title)):
+                self.ui.flowLayout.addWidget(gallery.C_QGallery)
+                gallery.C_QGallery.setVisible(True)
+            else:
+                self.ui.flowLayout.removeWidget(gallery.C_QGallery)
+                gallery.C_QGallery.setVisible(False)
+
+    def _tag_in_title(self, tags, title):
+        for tag in tags:
+            if tag in title:
+                return True
+        return False
 
     def hide_all_galleries(self):
         for gallery in self.galleries:
             try:
                 gallery.C_QGallery.setVisible(False)
                 self.ui.flowLayout.removeWidget(gallery.C_QGallery)
+                gallery.C_QGallery.setParent(None)
             except:
                 pass
 
@@ -177,33 +233,25 @@ class MainWindow(QtGui.QMainWindow):
             except:
                 pass
 
-    def find_galleries(self):
-        self.hide_all_galleries()
-        self._find_galleries()
-        for gallery in self.galleries:
-            if gallery.has_metadata():
-                gallery.C_QGallery = C_QGallery(self.ui.scrollArea, gallery)
-                self.ui.flowLayout.addWidget(gallery.C_QGallery)
-                self.ui.flowLayout.addWidget(gallery.C_QGallery)
-                gallery.C_QGallery.show()
-                self.app.processEvents()
-
-    def _find_galleries(self):
-        self.galleries = []
-        for folder in self.config["dirs"]:
-            folder = os.path.expanduser(folder)
-            bool_skip = True
-            for path, dirs, files in os.walk(folder):
-                if bool_skip:
-                    bool_skip = False
-                    continue
-                self.galleries.append(Gallery.LocalGallery(self, path))
-
-
-class Program(QtGui.QApplication):
-    def __init__(self, args):
-        super(Program, self).__init__(args)
-        self.main_window = MainWindow(self)
+    def _write_default_config(self):
+        config_file = open(self.config_file, "w")
+        default_json = {"dirs": [],
+                        "API_TIME_WAIT": 5,
+                        "COOKIES": {"ipb_member_id": "", "ipb_pass_hash": ""},
+                        "exts": [".png", ".jpg", ".jpeg", ".gif"],
+                        "API_TIME_TOO_FAST_WAIT": 100,
+                        "API_TIME_REQ_DELAY": 3,
+                        "image_width": 200,
+                        "base_url": "http://exhentai.org/?f_doujinshi=1&f_manga=1&f_artistcg=1&f_gamecg=1&f_western=1&f_non-h=1&f_imageset=1&f_cosplay=1&f_asianporn=1&f_misc=1&f_sname=on&adv&f_search=%s&advsearch=1&f_srdd=2&f_apply=Apply+Filter&f_shash=%s&page=%s&fs_smiliar=1&fs_covers=1",
+                        "HEADERS": {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:30.0) Gecko/20100101 Firefox/30.0"},
+                        "hash_size": 8192,
+                        "base_request": {"method": "gdata", "gidlist": []},
+                        "API_MAX_ENTRIES": 25,
+                        "API_MAX_SEQUENTIAL_REQUESTS": 4,
+                        "API_URL": "http://exhentai.org/api.php"}
+        config_file.write(json.dumps(default_json,
+                                     ensure_ascii=False).encode("utf8"))
+        config_file.close()
 
 if __name__ == "__main__":
     app = Program(sys.argv)

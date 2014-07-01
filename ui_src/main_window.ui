@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1000</width>
-    <height>750</height>
+    <width>1101</width>
+    <height>843</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -43,6 +43,9 @@ border: 1px solid black;
       <layout class="QGridLayout" name="gridLayout_2">
        <item row="0" column="0">
         <widget class="QScrollArea" name="scrollArea">
+         <property name="enabled">
+          <bool>true</bool>
+         </property>
          <property name="autoFillBackground">
           <bool>true</bool>
          </property>
@@ -56,6 +59,7 @@ QToolTip {
 color: #F1F1F1;
 border: 1px solid black;
 background: #34353b;
+min-height: 19;
 }
 
 QFrame.sidebarFrame {
@@ -143,11 +147,10 @@ background: #34353b
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>706</width>
-            <height>712</height>
+            <width>807</width>
+            <height>805</height>
            </rect>
           </property>
-          <zorder></zorder>
          </widget>
         </widget>
        </item>
@@ -185,6 +188,11 @@ background: #34353b
 background: #4f535b;
 border: 1px solid black;
 }
+
+QCheckBox::indicator {
+     width: 18px;
+     height: 18px;
+ }
 
 QFrame.sidebarFrame {
 
@@ -376,8 +384,20 @@ background: #34353b
               <verstretch>0</verstretch>
              </sizepolicy>
             </property>
+            <property name="styleSheet">
+             <string notr="true"/>
+            </property>
             <property name="text">
              <string>Reobtain all gallery information</string>
+            </property>
+            <property name="iconSize">
+             <size>
+              <width>10</width>
+              <height>10</height>
+             </size>
+            </property>
+            <property name="checked">
+             <bool>false</bool>
             </property>
            </widget>
           </item>
@@ -760,7 +780,6 @@ p, li { white-space: pre-wrap; }
            </layout>
           </item>
          </layout>
-         <zorder></zorder>
          <zorder></zorder>
          <zorder></zorder>
          <zorder>label_5</zorder>
