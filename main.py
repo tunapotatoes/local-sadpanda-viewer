@@ -197,24 +197,19 @@ class MainWindow(QtGui.QMainWindow):
             tags = [t.replace(" ", "_").lower() for t in
                     gallery.local_metadata["gmetadata"]["tags"]]
             title = gallery.local_metadata["gmetadata"]["title"].lower()
-            if any(w in tags for w in filters) or self._tag_in_title(filters,
-                                                                     title):
+            title = re.sub("\W", " ", title).split()
+            if any(w in tags for w in filters) or any(w in title
+                                                      for w in filters):
                 self.ui.flowLayout.removeWidget(gallery.C_QGallery)
                 gallery.C_QGallery.setVisible(False)
                 continue
-            if (any(w in tags for w in search) or len(
-                    search) == 0 or self._tag_in_title(search, title)):
+            if all(w in tags for w in search) or len(search) == 0 or all(
+                    w in title for w in search):
                 self.ui.flowLayout.addWidget(gallery.C_QGallery)
                 gallery.C_QGallery.setVisible(True)
             else:
                 self.ui.flowLayout.removeWidget(gallery.C_QGallery)
                 gallery.C_QGallery.setVisible(False)
-
-    def _tag_in_title(self, tags, title):
-        for tag in tags:
-            if tag in title:
-                return True
-        return False
 
     def hide_all_galleries(self):
         for gallery in self.galleries:
