@@ -11,6 +11,13 @@ using the actual API to download the metadata provided for each found gallery.
 This metadata is then stored in the gallery folder under the name
 ".metadata.json" and is then used to let you search your galleries.
 
+Download
+---------------------
+For Windows, navigate to the dist folder and download the zip file there.
+
+For Linux, there will be a compiled binary soon, once I figure out how to
+disable the console window. In the meanwhile, you can run it by running main.py.
+Required dependencies are: Python 2.7, PySide, Requests, BeautifulSoup, 
 
 How to use
 ---------------------

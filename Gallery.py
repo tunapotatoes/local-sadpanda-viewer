@@ -88,7 +88,6 @@ class LocalGallery(object):
             return
         title = clean(self.title)
         title_search = Search.WebSearch(self.parent, title=title, silent=True)
-        print "Title: %s\nLen: %s" % (title, str(len(title_search.result_urls)))
         if len(hash_search.result_urls) == 0:
             if len(title_search.result_urls) == 0:
                 print("No galleries found.")

@@ -88,6 +88,7 @@ class C_QGallery(QtGui.QFrame):
         self.gallery = gallery
         self.openButton.clicked.connect(self.openFile)
         self.image.setPixmap(QtGui.QPixmap().fromImage(image))
+        del image
         self.title.setText(self.gallery.local_metadata["gmetadata"]["title"])
         self.rating.setText("Rating: %s" % self.gallery.local_metadata[
             "gmetadata"]["rating"])

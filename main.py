@@ -14,6 +14,7 @@ import Threads
 from ui.main_window import Ui_MainWindow
 from ui.flow import FlowLayout
 from ui.gallery import C_QGallery
+from ui.misc import C_QFileDialog
 
 
 class Program(QtGui.QApplication):
@@ -25,6 +26,23 @@ class Program(QtGui.QApplication):
 class MainWindow(QtGui.QMainWindow):
     def __init__(self, app):
         super(MainWindow, self).__init__()
+        self.default_json = {"dirs": [],
+                             "API_TIME_WAIT": 5,
+                             "COOKIES": {"ipb_member_id": "",
+                                         "ipb_pass_hash": ""},
+                             "exts": [".png", ".jpg", ".jpeg", ".gif"],
+                             "API_TIME_TOO_FAST_WAIT": 100,
+                             "API_TIME_REQ_DELAY": 3,
+                             "image_width": 200,
+                             "base_url": "http://exhentai.org/?f_doujinshi=1&f_manga=1&f_artistcg=1&f_gamecg=1&f_western=1&f_non-h=1&f_imageset=1&f_cosplay=1&f_asianporn=1&f_misc=1&f_sname=on&adv&f_search=%s&advsearch=1&f_srdd=2&f_apply=Apply+Filter&f_shash=%s&page=%s&fs_smiliar=1&fs_covers=1",
+                             "HEADERS": {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:30.0) Gecko/20100101 Firefox/30.0"},
+                             "hash_size": 8192,
+                             "version": ".01",
+                             "base_request": {"method": "gdata",
+                                              "gidlist": []},
+                             "API_MAX_ENTRIES": 25,
+                             "API_MAX_SEQUENTIAL_REQUESTS": 4,
+                             "API_URL": "http://exhentai.org/api.php"}
         self.app = app
         self.config_file = os.path.expanduser("~/.sadpanda.config")
         self.request_object = Request.RequestObject(self)
@@ -36,6 +54,7 @@ class MainWindow(QtGui.QMainWindow):
         self.ui.refreshButton.clicked.connect(self.refresh)
         self.ui.submitSettings.clicked.connect(self.save_settings)
         self.ui.cancelSettings.clicked.connect(self.load_settings)
+        self.ui.directories.clicked.connect(self.browse)
         self.buttons = {"searchButton": self.ui.searchButton,
                         "refreshButton": self.ui.refreshButton,
                         "submitButton": self.ui.submitSettings,
@@ -45,7 +64,12 @@ class MainWindow(QtGui.QMainWindow):
         self.galleries = []
         # Right now only using two threads, but might have more in the future
         self.threads = {}
+        position = self.frameGeometry()
+        position.moveCenter(
+            QtGui.QDesktopWidget().availableGeometry().center())
+        self.move(position.topLeft())
         self.show()
+        self.raise_()
         self.find_galleries()
 
     def inc_progress(self, val):
@@ -108,10 +132,13 @@ class MainWindow(QtGui.QMainWindow):
         for gallery in self.galleries:
             try:
                 gallery.C_QGallery.gallery = None
+                gallery.C_QGallery.image = None
+                self.ui.flowLayout.removeWidget(gallery.C_QGallery)
+                gallery.C_QGallery.setParent(None)
                 gallery.C_QGallery = None
-                gallery = None
             except:
                 pass
+            gallery = None
         self.galleries = []
 
     def add_gallery_image(self, gallery, image):
@@ -119,12 +146,23 @@ class MainWindow(QtGui.QMainWindow):
         self.ui.flowLayout.addWidget(gallery.C_QGallery)
         gallery.C_QGallery.show()
 
+    def browse(self):
+        browser = C_QFileDialog()
+        browser.exec_()
+        if browser.open_clicked:
+            self.ui.directories.clear()
+            for directory in browser.selectedFiles:
+                self.ui.directories.append(directory)
+
     def load_settings(self):
         if not os.path.exists(self.config_file):
             self._write_default_config()
         config_file = io.open(self.config_file, "r", encoding="utf-8")
         self.config = json.load(config_file)
         config_file.close()
+        if "version" not in self.config or self.config[
+                "version"] != self.default_json["version"]:
+            self._update_config()
         self.ui.memberId.setText(self.config["COOKIES"]["ipb_member_id"])
         self.ui.passHash.setText(self.config["COOKIES"]["ipb_pass_hash"])
         self.ui.directories.clear()
@@ -215,8 +253,8 @@ class MainWindow(QtGui.QMainWindow):
         for gallery in self.galleries:
             try:
                 gallery.C_QGallery.setVisible(False)
-                self.ui.flowLayout.removeWidget(gallery.C_QGallery)
-                gallery.C_QGallery.setParent(None)
+                #self.ui.flowLayout.removeWidget(gallery.C_QGallery)
+                #gallery.C_QGallery.setParent(None)
             except:
                 pass
 
@@ -228,23 +266,18 @@ class MainWindow(QtGui.QMainWindow):
             except:
                 pass
 
+    def _update_config(self):
+        config_file = open(self.config_file, "w")
+        temp_dict = copy.deepcopy(self.default_json)
+        temp_dict["dirs"] = self.config["dirs"]
+        temp_dict["COOKIES"] = self.config["COOKIES"]
+        config_file.write(json.dumps(temp_dict,
+                                     ensure_ascii=False).encode("utf8"))
+        config_file.close()
+
     def _write_default_config(self):
         config_file = open(self.config_file, "w")
-        default_json = {"dirs": [],
-                        "API_TIME_WAIT": 5,
-                        "COOKIES": {"ipb_member_id": "", "ipb_pass_hash": ""},
-                        "exts": [".png", ".jpg", ".jpeg", ".gif"],
-                        "API_TIME_TOO_FAST_WAIT": 100,
-                        "API_TIME_REQ_DELAY": 3,
-                        "image_width": 200,
-                        "base_url": "http://exhentai.org/?f_doujinshi=1&f_manga=1&f_artistcg=1&f_gamecg=1&f_western=1&f_non-h=1&f_imageset=1&f_cosplay=1&f_asianporn=1&f_misc=1&f_sname=on&adv&f_search=%s&advsearch=1&f_srdd=2&f_apply=Apply+Filter&f_shash=%s&page=%s&fs_smiliar=1&fs_covers=1",
-                        "HEADERS": {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:30.0) Gecko/20100101 Firefox/30.0"},
-                        "hash_size": 8192,
-                        "base_request": {"method": "gdata", "gidlist": []},
-                        "API_MAX_ENTRIES": 25,
-                        "API_MAX_SEQUENTIAL_REQUESTS": 4,
-                        "API_URL": "http://exhentai.org/api.php"}
-        config_file.write(json.dumps(default_json,
+        config_file.write(json.dumps(self.default_json,
                                      ensure_ascii=False).encode("utf8"))
         config_file.close()
 

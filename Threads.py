@@ -52,6 +52,7 @@ class RestThread(threading.Thread):
         self.kwargs = kwargs
         self.signals = self.Signals()
         self.signals.end_signal.connect(self.parent.rest_thread_done)
+        self.signals.progress_signal.connect(self.parent.inc_progress)
         image_thread = self.parent.threads.get("it", None)
         while image_thread is not None and image_thread.isAlive():
             continue
@@ -73,11 +74,13 @@ class RestThread(threading.Thread):
 
     def _find_galleries(self, galleries, **kwargs):
         finished_galleries = []
+        # This is a very rough estimate.
+        inc_val = Decimal(1.0) / Decimal(len(galleries))
         for gallery in galleries:
             gallery.search()
             if gallery.WebGallery is not None:
                 finished_galleries.append(gallery)
-            print len(finished_galleries)
+            self.signals.progress_signal.emit(inc_val)
             if len(finished_galleries) == self.parent.config[
                     "API_MAX_ENTRIES"]:
                 self._get_metadata(finished_galleries)

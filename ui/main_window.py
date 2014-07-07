@@ -8,6 +8,7 @@
 # WARNING! All changes made in this file will be lost!
 
 from PySide import QtCore, QtGui
+from misc import C_QTextEdit
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -442,7 +443,7 @@ class Ui_MainWindow(object):
         self.label_8.setAlignment(QtCore.Qt.AlignLeading|QtCore.Qt.AlignLeft|QtCore.Qt.AlignTop)
         self.label_8.setObjectName("label_8")
         self.verticalLayout_5.addWidget(self.label_8)
-        self.directories = QtGui.QTextEdit(self.frame_4)
+        self.directories = C_QTextEdit(self.frame_4)
         sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
