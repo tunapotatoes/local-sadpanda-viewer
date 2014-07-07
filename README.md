@@ -13,14 +13,12 @@ This metadata is then stored in the gallery folder under the name
 
 Download
 ---------------------
-For Windows, navigate to the dist folder and download the zip file there.
-
-For Linux, there will be a compiled binary soon, once I figure out how to
-disable the console window. In the meanwhile, you can run it by running main.py.
-Required dependencies are: Python 2.7, PySide, Requests, BeautifulSoup, 
+Navigate to the bin folder and download the archive for your platform. 
 
 How to use
 ---------------------
+To run the program, execute the file named 'main' (main.exe on Windows).
+
 The lefthand column is the control panel for this program.
 To start with, enter your member ID and password hash in their respective
 fields. If you do not have these, download a cookie manager for the browser
@@ -46,7 +44,6 @@ just like in EX/EH. You can use quotes or underscores for multi-word tags, and
 "-" preceding a tag to filter out galleries with that tag. The one missing
 feature that probably will not be added is the ability to search tags by
 gender/type (E.G female:tag, male:tag).
-
 
 FAQ
 ---------------------
