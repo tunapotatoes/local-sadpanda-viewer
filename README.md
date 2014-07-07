@@ -13,7 +13,7 @@ This metadata is then stored in the gallery folder under the name
 
 Download
 ---------------------
-Navigate to the bin folder and download the archive for your platform. 
+Navigate to the dist folder and download the archive for your platform. 
 
 How to use
 ---------------------
