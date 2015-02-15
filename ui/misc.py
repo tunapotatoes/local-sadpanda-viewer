@@ -1,15 +1,31 @@
-#!/usr/bin/python2
+#!/usr/bin/env python
+
 import os
 from PySide import QtCore, QtGui
 
+
+class C_QScrollArea(QtGui.QScrollArea):
+    def keyPressEvent(self, event):
+        key = event.key()
+        scrollbar = self.verticalScrollBar()
+        if key == QtCore.Qt.Key_Home:
+            scrollbar.setValue(scrollbar.minimum())
+        elif key == QtCore.Qt.Key_End:
+            scrollbar.setValue(scrollbar.maximum())
+        else:
+            super(C_QScrollArea, self).keyPressEvent(event)
+
+
 class C_QTextEdit(QtGui.QTextEdit):
     clicked = QtCore.Signal()
+
     def __init__(self, parent=None):
         super(C_QTextEdit, self).__init__(parent)
         self.setReadOnly(True)
-        
+
     def mousePressEvent(self, event):
         self.clicked.emit()
+
 
 class C_QFileDialog(QtGui.QFileDialog):
     def __init__(self, parent=None):
@@ -17,6 +33,7 @@ class C_QFileDialog(QtGui.QFileDialog):
         self.open_clicked = False
         self.setOption(self.DontUseNativeDialog, True)
         self.setFileMode(self.ExistingFiles)
+        #self.setFileMode(self.DirectoryOnly)
         buttons = self.findChildren(QtGui.QPushButton)
         self.openButton = [x for x in buttons if "open" in str(
             x.text()).lower()][0]

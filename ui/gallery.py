@@ -1,5 +1,6 @@
 #!/usr/bin/python2
 from PySide import QtCore, QtGui
+import weakref
 
 """
 This shit is why I don't do Qt from hand.
@@ -7,8 +8,8 @@ This shit is why I don't do Qt from hand.
 
 
 class C_QGallery(QtGui.QFrame):
-    def __init__(self, parent=None, gallery=None, image=None, **kwargs):
-        super(C_QGallery, self).__init__(parent)
+    def __init__(self, parent=None, gallery=None, **kwargs):
+        super(C_QGallery, self).__init__()
         self.gridLayout_2 = QtGui.QGridLayout()
         self.gridLayout_2.setObjectName("gridLayout_2")
         self.verticalLayout = QtGui.QVBoxLayout()
@@ -81,25 +82,31 @@ class C_QGallery(QtGui.QFrame):
         self.verticalLayout.addLayout(self.horizontalLayout_3)
         self.gridLayout_2.addLayout(self.verticalLayout, 0, 0, 1, 1)
         self.retranslateUi()
-
         # My manual stuff:
         #self.setContentsMargins(9, 9, 9, 9)
         self.setLayout(self.gridLayout_2)
-        self.gallery = gallery
+        self._gallery = weakref.ref(gallery)
         self.openButton.clicked.connect(self.openFile)
-        self.image.setPixmap(QtGui.QPixmap().fromImage(image))
-        del image
-        self.title.setText(self.gallery.local_metadata["gmetadata"]["title"])
-        self.rating.setText("Rating: %s" % self.gallery.local_metadata[
-            "gmetadata"]["rating"])
-        self._setToolTip()
+        self.editButton.clicked.connect(self.gallery.customize)
+        self.image.setPixmap(QtGui.QPixmap().fromImage(self.gallery.image))
+        self.gallery.image = None
+        self.update()
         self.setFixedSize(250, 400)
-        self.hide()
+        #self.hide()
+
+    def update(self):
+        self.title.setText(self.gallery.title)
+        self.rating.setText("Rating: %s" % self.gallery.rating)
+        self._setToolTip()
+
+    @property
+    def gallery(self):
+        return self._gallery()
 
     def retranslateUi(self):
         # Not planning on translating shit so I'll probably just ax this later
         self.title.setText(QtGui.QApplication.translate("Form", "Title", None, QtGui.QApplication.UnicodeUTF8))
-        self.editButton.setText(QtGui.QApplication.translate("Form", "TODO", None, QtGui.QApplication.UnicodeUTF8))
+        self.editButton.setText(QtGui.QApplication.translate("Form", "Edit", None, QtGui.QApplication.UnicodeUTF8))
         self.rating.setText(QtGui.QApplication.translate("Form", "TextLabel", None, QtGui.QApplication.UnicodeUTF8))
         self.openButton.setText(QtGui.QApplication.translate("Form", "Open", None, QtGui.QApplication.UnicodeUTF8))
         self.setProperty("class", QtGui.QApplication.translate("Form", "sidebarFrame", None, QtGui.QApplication.UnicodeUTF8))
@@ -109,7 +116,9 @@ class C_QGallery(QtGui.QFrame):
             self.gallery.files[0]))
 
     def _setToolTip(self):
-        tooltip = "Tags: "
-        for tag in self.gallery.local_metadata["gmetadata"]["tags"]:
-            tooltip += tag + " "
+        if self.gallery.tags:
+            tooltip = ", ".join(self.gallery.tags)
+            tooltip = "<p>" + tooltip + "</p>"
+        else:
+            tooltip = "No tags found."
         self.setToolTip(tooltip)

@@ -1,25 +1,34 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'ui_src/main_window.ui'
+# Form implementation generated from reading ui file 'main_window.ui'
 #
-# Created: Mon Jun 30 01:33:48 2014
+# Created: Fri Feb 13 19:21:52 2015
 #      by: pyside-uic 0.2.15 running on PySide 1.2.2
 #
 # WARNING! All changes made in this file will be lost!
 
 from PySide import QtCore, QtGui
-from misc import C_QTextEdit
+from ui.misc import C_QTextEdit, C_QScrollArea
+
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(1101, 843)
+        MainWindow.resize(1120, 845)
         MainWindow.setAutoFillBackground(False)
-        MainWindow.setStyleSheet("\n"
+        MainWindow.setStyleSheet("#MainWindow {\n"
+"background: #34353b;\n"
+"border: none;\n"
+"}\n"
+"\n"
+"#centralwidget {\n"
 "background: #34353b;\n"
 "border: none;\n"
 "\n"
-"")
+"}#scrollAreaWidgetContents {\n"
+"background: #34353b;\n"
+"border: none;\n"
+"}")
         self.centralwidget = QtGui.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
         self.gridLayout = QtGui.QGridLayout(self.centralwidget)
@@ -35,12 +44,46 @@ class Ui_MainWindow(object):
         self.scrollFrame.setObjectName("scrollFrame")
         self.gridLayout_2 = QtGui.QGridLayout(self.scrollFrame)
         self.gridLayout_2.setObjectName("gridLayout_2")
-        self.scrollArea = QtGui.QScrollArea(self.scrollFrame)
+        #self.scrollArea = QtGui.QScrollArea(self.scrollFrame)
+        self.scrollArea = C_QScrollArea(self.scrollFrame)
         self.scrollArea.setEnabled(True)
+        
         self.scrollArea.setAutoFillBackground(True)
         self.scrollArea.setStyleSheet("#scrollArea {\n"
 "background: #4f535b;\n"
+"border: none;\n"
 "}\n"
+"\n"
+"QScrollBar:vertical {               \n"
+"        border: 1px solid black;\n"
+"        background: #4f535b;\n"
+"        width:10px;    \n"
+"        margin: 0px 0px 0px 0px;\n"
+"    }\n"
+"    QScrollBar::handle:vertical {\n"
+"        background: qlineargradient(x1:0, y1:0, x2:1, y2:0,\n"
+"        stop: 0  #34353b, stop: 0.5 #34353b,  stop:1 #34353b);\n"
+"        min-height: 0px;\n"
+"    \n"
+"    }\n"
+"    QScrollBar::add-line:vertical {\n"
+"        background: qlineargradient(x1:0, y1:0, x2:1, y2:0,\n"
+"        stop: 0  #34353b, stop: 0.5 #34353b,  stop:1 #34353b);\n"
+"            height: px;\n"
+"        subcontrol-position: bottom;\n"
+"        subcontrol-origin: margin;\n"
+"    }\n"
+"    QScrollBar::sub-line:vertical {\n"
+"        background: qlineargradient(x1:0, y1:0, x2:1, y2:0,\n"
+"        stop: 0  #34353b, stop: 0.5 #34353b,  stop:1 #34353b);\n"
+"        height: 0px;\n"
+"        subcontrol-position: top;\n"
+"    }\n"
+    "QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical{\n"
+     "background: none;\n"
+                                      "}\n"
+"\n"
+"\n"
 "\n"
 "\n"
 "QToolTip {\n"
@@ -120,12 +163,12 @@ class Ui_MainWindow(object):
 "QProgressBar::chunk:horizontal {\n"
 "background: #34353b\n"
 "}")
-        self.scrollArea.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
-        self.scrollArea.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        self.scrollArea.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
+        self.scrollArea.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
         self.scrollArea.setWidgetResizable(True)
         self.scrollArea.setObjectName("scrollArea")
         self.scrollAreaWidgetContents = QtGui.QWidget()
-        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 807, 805))
+        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 797, 805))
         self.scrollAreaWidgetContents.setObjectName("scrollAreaWidgetContents")
         self.scrollArea.setWidget(self.scrollAreaWidgetContents)
         self.gridLayout_2.addWidget(self.scrollArea, 0, 0, 1, 1)
@@ -405,28 +448,28 @@ class Ui_MainWindow(object):
         self.horizontalLayout_7.setObjectName("horizontalLayout_7")
         spacerItem1 = QtGui.QSpacerItem(40, 20, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
         self.horizontalLayout_7.addItem(spacerItem1)
-        self.cancelSettings = QtGui.QPushButton(self.frame_4)
+        self.cancelButton = QtGui.QPushButton(self.frame_4)
         sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.cancelSettings.sizePolicy().hasHeightForWidth())
-        self.cancelSettings.setSizePolicy(sizePolicy)
-        self.cancelSettings.setMinimumSize(QtCore.QSize(50, 23))
-        self.cancelSettings.setMaximumSize(QtCore.QSize(16777215, 23))
-        self.cancelSettings.setSizeIncrement(QtCore.QSize(0, 0))
-        self.cancelSettings.setObjectName("cancelSettings")
-        self.horizontalLayout_7.addWidget(self.cancelSettings)
-        self.submitSettings = QtGui.QPushButton(self.frame_4)
+        sizePolicy.setHeightForWidth(self.cancelButton.sizePolicy().hasHeightForWidth())
+        self.cancelButton.setSizePolicy(sizePolicy)
+        self.cancelButton.setMinimumSize(QtCore.QSize(50, 23))
+        self.cancelButton.setMaximumSize(QtCore.QSize(16777215, 23))
+        self.cancelButton.setSizeIncrement(QtCore.QSize(0, 0))
+        self.cancelButton.setObjectName("cancelButton")
+        self.horizontalLayout_7.addWidget(self.cancelButton)
+        self.submitButton = QtGui.QPushButton(self.frame_4)
         sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.submitSettings.sizePolicy().hasHeightForWidth())
-        self.submitSettings.setSizePolicy(sizePolicy)
-        self.submitSettings.setMinimumSize(QtCore.QSize(50, 23))
-        self.submitSettings.setMaximumSize(QtCore.QSize(16777215, 23))
-        self.submitSettings.setSizeIncrement(QtCore.QSize(0, 0))
-        self.submitSettings.setObjectName("submitSettings")
-        self.horizontalLayout_7.addWidget(self.submitSettings)
+        sizePolicy.setHeightForWidth(self.submitButton.sizePolicy().hasHeightForWidth())
+        self.submitButton.setSizePolicy(sizePolicy)
+        self.submitButton.setMinimumSize(QtCore.QSize(50, 23))
+        self.submitButton.setMaximumSize(QtCore.QSize(16777215, 23))
+        self.submitButton.setSizeIncrement(QtCore.QSize(0, 0))
+        self.submitButton.setObjectName("submitButton")
+        self.horizontalLayout_7.addWidget(self.submitButton)
         spacerItem2 = QtGui.QSpacerItem(40, 20, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
         self.horizontalLayout_7.addItem(spacerItem2)
         self.gridLayout_4.addLayout(self.horizontalLayout_7, 4, 0, 1, 1)
@@ -468,8 +511,8 @@ class Ui_MainWindow(object):
         MainWindow.setTabOrder(self.refreshButton, self.memberId)
         MainWindow.setTabOrder(self.memberId, self.passHash)
         MainWindow.setTabOrder(self.passHash, self.directories)
-        MainWindow.setTabOrder(self.directories, self.cancelSettings)
-        MainWindow.setTabOrder(self.cancelSettings, self.submitSettings)
+        MainWindow.setTabOrder(self.directories, self.cancelButton)
+        MainWindow.setTabOrder(self.cancelButton, self.submitButton)
 
     def retranslateUi(self, MainWindow):
         MainWindow.setWindowTitle(QtGui.QApplication.translate("MainWindow", "SadPanda Browser", None, QtGui.QApplication.UnicodeUTF8))
@@ -490,8 +533,8 @@ class Ui_MainWindow(object):
         self.label_6.setProperty("class", QtGui.QApplication.translate("MainWindow", "smallText", None, QtGui.QApplication.UnicodeUTF8))
         self.label_7.setText(QtGui.QApplication.translate("MainWindow", "Password Hash", None, QtGui.QApplication.UnicodeUTF8))
         self.label_7.setProperty("class", QtGui.QApplication.translate("MainWindow", "smallText", None, QtGui.QApplication.UnicodeUTF8))
-        self.cancelSettings.setText(QtGui.QApplication.translate("MainWindow", "Cancel", None, QtGui.QApplication.UnicodeUTF8))
-        self.submitSettings.setText(QtGui.QApplication.translate("MainWindow", "Submit", None, QtGui.QApplication.UnicodeUTF8))
+        self.cancelButton.setText(QtGui.QApplication.translate("MainWindow", "Cancel", None, QtGui.QApplication.UnicodeUTF8))
+        self.submitButton.setText(QtGui.QApplication.translate("MainWindow", "Submit", None, QtGui.QApplication.UnicodeUTF8))
         self.label_8.setToolTip(QtGui.QApplication.translate("MainWindow", "<html><head/><body><p><br/></p></body></html>", None, QtGui.QApplication.UnicodeUTF8))
         self.label_8.setText(QtGui.QApplication.translate("MainWindow", "Folders  ", None, QtGui.QApplication.UnicodeUTF8))
         self.label_8.setProperty("class", QtGui.QApplication.translate("MainWindow", "smallText", None, QtGui.QApplication.UnicodeUTF8))

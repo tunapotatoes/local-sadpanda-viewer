@@ -1,149 +1,214 @@
-#!/usr/bin/python2
+#!/usr/bin/env python
 import os
 import hashlib
-import json
 import io
+import json
 import re
-import Search
+import Windows
+from Logger import Logger
+import weakref
 
-class LocalGallery(object):
-    def __init__(self, parent, path, **kwargs):
-        self.parent = parent
-        self.C_QGallery = None
-        self.WebGallery = None
-        self.needed_metadata = True
-        self.files = []
-        self.path = os.path.expanduser(path)
-        self.title = os.path.normpath(self.path).split(os.sep)[-1]
+
+class Gallery(Logger):
+    IMAGE_EXTS = [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webm"]
+    HASH_SIZE = 8192
+    BASE_EX_URL = "http://exhentai.org/g/%s/%s/"
+
+    def __init__(self, parent, folder_path, files):
+        self._parent = weakref.ref(parent)
+        self.metadata = {}
+        self.path = os.path.join(folder_path)
+        self.files = files
+        #self.files = Gallery.find_images(self.path)
+        assert len(self.files) > 0
         self.metadata_file = os.path.join(self.path, ".metadata.json")
-        self._find_files()
-        #if not self.has_metadata():
-        #    self._search()
-        if self.has_metadata():
-            self.needed_metadata = False
-            self.local_metadata = self.load_metadata()
-            self.WebGallery = WebGallery(gallery_id=self.local_metadata["gmetadata"]["gid"],
-                                         gallery_token=self.local_metadata["gmetadata"]["token"])
+        if not os.path.exists(self.metadata_file):
+            self.update_metadata({})
+        else:
+            self.load_metadata()
+        # Name represents the name from the path
+        self.name = os.path.normpath(self.path).split(os.sep)[-1]
+
+    @property
+    def parent(self):
+        return self._parent()
 
     def __del__(self):
         self.C_QGallery = None
-        self.WebGallery = None
 
-    def has_metadata(self):
-        return os.path.exists(self.metadata_file)
+    @property
+    def title(self):
+        return self.ctitle or self.extitle or self.name
 
-    def load_metadata(self):
-        metadata_file = io.open(self.metadata_file, "r", encoding="utf-8")
-        local_metadata = json.load(metadata_file)
-        metadata_file.close()
-        if type(local_metadata) is not dict:
-            local_metadata = {}
-        if type(local_metadata.get("gmetadata", None)) is not dict:
-            local_metadata["gmetadata"] = {}
-        return local_metadata
+    @property
+    def ctitle(self):
+        return self.metadata.get("cmetadata", {}).get("title", "")
 
-    def save_metadata(self, metadata):
-        clean_metadata(metadata)
-        local_metadata = {"gmetadata": {}}
-        local_metadata["gmetadata"] = metadata
-        metadata_file = open(self.metadata_file, "w")
-        json_data = json.dumps(local_metadata,
-                               ensure_ascii=False).encode("utf8")
-        metadata_file.write(json_data)
-        metadata_file.close()
+    @ctitle.setter
+    def ctitle(self, val):
+        self.metadata["cmetadata"] = self.metadata.get("cmetadata", {})
+        self.metadata["cmetadata"]["title"] = val
 
-        
-    def _find_files(self):
-        temp_files = []
-        for path, dirs, files in os.walk(self.path):
+    @property
+    def extitle(self):
+        return self.metadata.get("gmetadata", {}).get("title", "")
+
+    @extitle.setter
+    def extitle(self, val):
+        self.metadata["gmetadata"] = self.metadata.get("gmetadata", {})
+        self.metadata["gmetadata"]["title"] = val
+
+    @property
+    def extags(self):
+        return self.metadata.get("gmetadata", {}).get("tags", [])
+
+    @extags.setter
+    def extags(self, val):
+        self.metadata["gmetadata"] = self.metadata.get("gmetadata", {})
+        self.metadata["gmetadata"]["tags"] = val
+
+    @property
+    def ctags(self):
+        return self.metadata.get("cmetadata", {}).get("tags", [])
+
+    @ctags.setter
+    def ctags(self, val):
+        self.metadata["cmetadata"] = self.metadata.get("cmetadata", {})
+        self.metadata["cmetadata"]["tags"] = val
+
+    @property
+    def tags(self):
+        return self.extags + self.ctags
+
+    @property
+    def rating(self):
+        return self.crating or self.exrating
+
+    @property
+    def crating(self):
+        return self.metadata.get("cmetadata", {}).get("rating")
+
+    @crating.setter
+    def crating(self, val):
+        self.metadata["cmetadata"] = self.metadata.get("cmetadata", {})
+        self.metadata["cmetadata"]["rating"] = val
+
+    @property
+    def exrating(self):
+        return self.metadata.get("gmetadata", {}).get("rating")
+
+    @exrating.setter
+    def exrating(self, val):
+        self.metadata["gmetadata"] = self.metadata.get("gmetadata", {})
+        self.metadata["gmetadata"]["rating"] = val
+
+    @property
+    def gid(self):
+        return self.metadata.get("gmetadata", {}).get("gid")
+
+    @gid.setter
+    def gid(self, val):
+        self.metadata["gmetadata"] = self.metadata.get("gmetadata", {})
+        self.metadata["gmetadata"]["gid"] = val
+
+    @property
+    def token(self):
+        return self.metadata.get("gmetadata", {}).get("token")
+
+    @token.setter
+    def token(self, val):
+        self.metadata["gmetadata"] = self.metadata.get("gmetadata", {})
+        self.metadata["gmetadata"]["token"] = val
+
+    @property
+    def id(self):
+        return [self.gid, self.token]
+
+    @id.setter
+    def id(self, val):
+        self.gid = val[0]
+        self.token = val[1]
+
+    def customize(self):
+        self.customize_window = Windows.CustomizeWindow(self.parent, self)
+        self.customize_window.tags = ", ".join(self.ctags)
+        self.customize_window.title = self.ctitle
+        if self.gid:
+            self.customize_window.url = self.generate_ex_url()
+        self.customize_window.rating = self.crating
+
+    def save_customization(self):
+        self.ctags = list(filter(None, map(lambda x: re.sub("^\s+", "", x),
+                                           self.customize_window.tags.split(","))))
+        self.ctitle = self.customize_window.title
+        self.crating = self.customize_window.rating
+        try:
+            self.id = Gallery.process_ex_url(self.customize_window.url)
+        except:
+            pass
+        self.customize_window.close()
+        self.customize_window = None
+        self.update_qgallery()
+        self.save_metadata()
+
+    @classmethod
+    def find_images(cls, folder_path):
+        images = []
+        for path, dirs, files in os.walk(folder_path):
             for f in files:
                 ext = os.path.splitext(f)[1]
-                if ext in self.parent.config["exts"]:
-                    temp_files.append(os.path.join(self.path, f))
+                if ext in Gallery.IMAGE_EXTS:
+                    images.append(os.path.join(folder_path, f))
             break
-        self.files = sorted(temp_files, key=lambda f: f.lower())
+        return sorted(images, key=lambda f: f.lower())
 
-    def search(self, **kwargs):
-        self._search()
-        if self.has_metadata():
-            self.local_metadata = self.load_metadata()
+    def load_metadata(self):
+        metadata = io.open(self.metadata_file, "r", encoding="utf-8")
+        self.metadata = json.load(metadata)
 
+    def update_metadata(self, new_metadata):
+        self.logger.debug("Update metadata with %s" % new_metadata)
+        self.metadata.update(new_metadata)
+        self.save_metadata()
 
-    def _search(self):
-        if len(self.files) == 0:
-            return
+    def save_metadata(self):
+        metadata_file = open(self.metadata_file, "wb")
+        metadata_file.write(json.dumps(self.metadata,
+                                       ensure_ascii=False).encode("utf8"))
+        metadata_file.close()
+
+    def generate_image_hash(self):
         sha1 = hashlib.sha1()
         with open(self.files[0], "rb") as image:
-            buff = image.read(self.parent.config["hash_size"])
+            self.logger.debug("Generate sha1 for first image in folder.")
+            buff = image.read(self.HASH_SIZE)
             while len(buff) > 0:
                 sha1.update(buff)
-                buff = image.read(self.parent.config["hash_size"])
-        sha_hash = sha1.hexdigest()
-        hash_search = Search.WebSearch(self.parent, sha_hash=sha_hash,
-                                       silent=True)
-        print "Len hash: %s" % str(len(hash_search.result_urls))
-        print hash_search.result_urls
-        if len(hash_search.result_urls) == 1:
-            self.WebGallery = WebGallery(url=hash_search.result_urls[0])
-            return
-        title = clean(self.title)
-        title_search = Search.WebSearch(self.parent, title=title, silent=True)
-        if len(hash_search.result_urls) == 0:
-            if len(title_search.result_urls) == 0:
-                print("No galleries found.")
-                return
-            if len(title_search.result_urls) == 1:
-                self.WebGallery = WebGallery(url=title_search.result_urls[0])
-                return
-        else:
-            for hash_url in hash_search.result_urls:
-                if hash_url in title_search.result_urls:
-                    self.WebGallery = WebGallery(url=hash_url)
-                    return
-            print("For %s" % self.title)
-            print("No definite gallery found, picking first.")
-            self.WebGallery = WebGallery(url=hash_search.result_urls[0])
+                buff = image.read(self.HASH_SIZE)
+        return sha1.hexdigest()
 
+    def update_qgallery(self):
+        self.C_QGallery.update()
 
-class WebGallery(object):
-    def __init__(self, **kwargs):
-        self.url = kwargs.get("url", None)
-        self.gallery_id = kwargs.get("gallery_id", "")
-        self.gallery_token = kwargs.get("gallery_token", "")
-        if self.url is not None:
-            self._process_url()
-        self.gid = [self.gallery_id, self.gallery_token]
+    @classmethod
+    def clean_metadata(cls, metadata):
+        cls.logger.debug("Cleaning metadata.\nInput data: %s" % metadata)
+        if isinstance(metadata, dict):
+            metadata = {key: cls.clean_metadata(metadata[key])
+                        for key in metadata}
+        elif isinstance(metadata, list):
+            metadata = [cls.clean_metadata(val) for val in metadata]
+        elif isinstance(metadata, unicode):
+            # I really, REALLY wish I had written a comment about whatever the fuck this regex does.
+            metadata = re.sub("&#(\d+)(;|(?=\s))", "", metadata)
+            metadata = re.sub("(&amp;)", "&", metadata)
+        cls.logger.debug("Output data: %s" % metadata)
+        return metadata
 
-    def _process_url(self, **kwargs):
-        split_url = self.url.split("/")
-        self.gallery_id = split_url[-3]
-        self.gallery_token = split_url[-2]
+    def generate_ex_url(self):
+        return self.BASE_EX_URL % (self.gid, self.token)
 
-    def validate_data(self, metadata):
-        gid = metadata["gid"]
-        token = metadata["token"]
-        return (self.gallery_id, self.gallery_token) == (str(gid), str(token))
-    
-
-def clean(string):
-    "Removes chars that cause problems with ex"
-    banned_chars = ["=", "-", ":", "|", "~", "+", "]", "[", ".", ",", ")", "("]
-    #string = re.sub(r"\([^)]*\)", " ", string)
-    string = re.sub(r"\{[^}]*\}", " ", string)
-    #string = re.sub(r"\[[^]]*\]", " ", string)
-    string = re.sub(r"[\w]*[\-][\w]*", " ", string)
-    for char in banned_chars:
-        string = string.replace(char, " ")
-    return string
-
-def clean_metadata(metadata):
-    for key in metadata.keys():
-        if type(metadata[key]) == dict:
-            self.clean(metadata[key])
-        elif type(metadata[key]) == list:
-            for i in range(len(metadata[key])):
-                metadata[key][i] = re.sub("&#(\d+)(;|(?=\s))", "", metadata[key][i])
-                metadata[key][i] = re.sub("(&amp;)", "&", metadata[key][i])
-        elif type(metadata[key]) == unicode:
-            metadata[key] = re.sub("&#(\d+)(;|(?=\s))", "", metadata[key])
-            metadata[key] = re.sub("(&amp;)", "&", metadata[key])
+    @classmethod
+    def process_ex_url(cls, url):
+        split_url = url.split("/")
+        return int(split_url[-3]), split_url[-2]
