@@ -1,5 +1,8 @@
 local-sandpanda-viewer
 =====================
+DO NOT USE THIS RIGHT NOW.
+---------------------
+When the this message is gone, you are free to use it.
 
 Overview
 ---------------------
