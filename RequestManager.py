@@ -32,14 +32,12 @@ class RequestClass(Logger):
         self.COOKIES["ipb_pass_hash"] = val
 
     def _rest(self, method, url, **kwargs):
-        safety = kwargs.pop("safety", True) # Safety enables the really conservative delays between requests
         retry_count = kwargs.pop("retry_count", self.API_RETRY_COUNT)
-        if safety:
-            time.sleep(self.API_TIME_REQ_DELAY)
-            if self.count >= self.API_MAX_SEQUENTIAL_REQUESTS:
-                time.sleep(self.API_TIME_WAIT)
-                self.count = 0
-            self.count += 1
+        time.sleep(self.API_TIME_REQ_DELAY)
+        if self.count >= self.API_MAX_SEQUENTIAL_REQUESTS:
+            time.sleep(self.API_TIME_WAIT)
+            self.count = 0
+        self.count += 1
         payload = kwargs.pop("payload", None)
         if payload:
             payload = json.dumps(payload)

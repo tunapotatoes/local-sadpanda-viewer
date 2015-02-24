@@ -17,6 +17,8 @@ class Gallery(Logger):
     def __init__(self, parent, folder_path, files):
         self._parent = weakref.ref(parent)
         self.metadata = {}
+        self.C_QGallery = None
+        self.force_metadata = False
         self.path = os.path.join(folder_path)
         self.files = files
         #self.files = Gallery.find_images(self.path)
@@ -143,7 +145,10 @@ class Gallery(Logger):
         self.ctitle = self.customize_window.title
         self.crating = self.customize_window.rating
         try:
-            self.id = Gallery.process_ex_url(self.customize_window.url)
+            new_id = Gallery.process_ex_url(self.customize_window.url)
+            if self.id != new_id:
+                self.force_metadata = True
+            self.id = new_id
         except:
             pass
         self.customize_window.close()
@@ -169,9 +174,11 @@ class Gallery(Logger):
     def update_metadata(self, new_metadata):
         self.logger.debug("Update metadata with %s" % new_metadata)
         self.metadata.update(new_metadata)
+        self.force_metadata = False
         self.save_metadata()
 
     def save_metadata(self):
+        self.metadata = self.clean_metadata(self.metadata)
         metadata_file = open(self.metadata_file, "wb")
         metadata_file.write(json.dumps(self.metadata,
                                        ensure_ascii=False).encode("utf8"))
@@ -190,19 +197,19 @@ class Gallery(Logger):
     def update_qgallery(self):
         self.C_QGallery.update()
 
-    @classmethod
-    def clean_metadata(cls, metadata):
-        cls.logger.debug("Cleaning metadata.\nInput data: %s" % metadata)
+    def clean_metadata(self, metadata):
+        self.logger.debug("Cleaning metadata.\nInput data: %s" % metadata)
         if isinstance(metadata, dict):
-            metadata = {key: cls.clean_metadata(metadata[key])
+            metadata = {key: self.clean_metadata(metadata[key])
                         for key in metadata}
         elif isinstance(metadata, list):
-            metadata = [cls.clean_metadata(val) for val in metadata]
-        elif isinstance(metadata, unicode):
-            # I really, REALLY wish I had written a comment about whatever the fuck this regex does.
-            metadata = re.sub("&#(\d+)(;|(?=\s))", "", metadata)
+            metadata = [self.clean_metadata(val) for val in metadata]
+        elif isinstance(metadata, str):
+            metadata = re.sub("&#039;", "'", metadata)
             metadata = re.sub("(&amp;)", "&", metadata)
-        cls.logger.debug("Output data: %s" % metadata)
+            # I really, REALLY wish I had written a comment about whatever the fuck this regex does.
+            #metadata = re.sub("&#(\d+)(;|(?=\s))", "", metadata)
+        self.logger.debug("Output data: %s" % metadata)
         return metadata
 
     def generate_ex_url(self):

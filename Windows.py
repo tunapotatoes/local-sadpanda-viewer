@@ -5,7 +5,6 @@ from PySide import QtCore, QtGui
 from Logger import Logger
 from ui.main_window import Ui_MainWindow
 from ui.flow import FlowLayout
-from ui.gallery import C_QGallery
 from ui.misc import C_QFileDialog
 from ui.customize import Ui_Dialog
 import weakref
@@ -16,11 +15,15 @@ class MainWindow(Logger, QtGui.QMainWindow):
     BUTTONS = ["searchButton",
                "refreshButton",
                "submitButton",
-               "cancelButton"]
+               "cancelButton",
+               "searchLine",
+               "navButton",
+               "pageBox"]
 
     def __init__(self, app):
         super(MainWindow, self).__init__()
         self._app = weakref.ref(app)
+        self.button_lock = False
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
         self.ui.flowLayout = FlowLayout(self.ui.scrollAreaWidgetContents)
@@ -28,6 +31,7 @@ class MainWindow(Logger, QtGui.QMainWindow):
         self.ui.refreshButton.clicked.connect(self.app.get_metadata)
         self.ui.submitButton.clicked.connect(self.app.update_config)
         self.ui.cancelButton.clicked.connect(self.app.load_config)
+        self.ui.navButton.clicked.connect(self.app.switch_page)
         self.ui.directories.clicked.connect(self.browse)
         position = self.frameGeometry()
         position.moveCenter(
@@ -35,6 +39,10 @@ class MainWindow(Logger, QtGui.QMainWindow):
         self.move(position.topLeft())
         self.show()
         self.raise_()
+
+    @property
+    def page_number(self):
+        return self.ui.pageBox.currentIndex()
 
     @property
     def app(self):
@@ -70,12 +78,14 @@ class MainWindow(Logger, QtGui.QMainWindow):
         [self.ui.directories.append(v) for v in val]
 
     def set_button_status(self, button, status):
-        getattr(getattr(self.ui, str(button)), "setEnabled")(status)
+        getattr(getattr(self.ui, button), "setEnabled")(status)
 
     def disable_buttons(self, buttons):
         [self.set_button_status(b, False) for b in buttons]
 
     def enable_buttons(self, buttons):
+        if self.button_lock:
+            return
         [self.set_button_status(b, True) for b in buttons]
 
     def disable_all_buttons(self):
@@ -84,34 +94,29 @@ class MainWindow(Logger, QtGui.QMainWindow):
     def enable_all_buttons(self):
         self.enable_buttons(self.BUTTONS)
 
-    def add_galleries(self, galleries):
-        for gallery in galleries:
-            self.logger.debug("Adding %s gallery" % gallery.title)
-            gallery.C_QGallery = C_QGallery(self, gallery)
-            #self.ui.flowLayout.addWidget(gallery.C_QGallery)
-        self.show_galleries(galleries)
-
     def show_galleries(self, galleries):
         for gallery in galleries:
+            assert gallery in self.app.current_page
             self.logger.debug("Showing %s gallery" % gallery.title)
-            #self.ui.flowLayout.addItem(gallery.C_QGallery)
             self.ui.flowLayout.addWidget(gallery.C_QGallery)
             gallery.C_QGallery.show()
-            #gallery.C_QGallery.setVisible(True)
         self.ui.flowLayout.update()
 
     def hide_galleries(self, galleries):
         for gallery in galleries:
+            assert gallery in self.app.current_page
             self.logger.debug("Hiding %s gallery" % gallery.title)
             self.ui.flowLayout.removeWidget(gallery.C_QGallery)
-            gallery.C_QGallery.hide()
-            #gallery.C_QGallery.setVisible(False)
+            try:
+                gallery.C_QGallery.hide()
+            except AttributeError:
+                pass
         self.ui.flowLayout.update()
 
     def search(self):
-        self.set_button_status("searchButton", False)
+        self.disable_all_buttons()
         self.app.search()
-        self.set_button_status("searchButton", True)
+        self.enable_all_buttons()
 
     def inc_progress(self, val):
         self.ui.statusFrame.show()
@@ -136,6 +141,12 @@ class MainWindow(Logger, QtGui.QMainWindow):
         self.disable_buttons(["refreshButton", "submitButton", "cancelButton"])
         self.app.get_metadata()
         self.enable_all_buttons()
+
+    def configure_combo_box(self):
+        self.ui.pageLabel.setText("of %s" % self.app.page_count)
+        self.ui.pageBox.clear()
+        self.ui.pageBox.addItems(list(
+            map(str, range(1, self.app.page_count + 1))))
 
 
 class CustomizeWindow(Logger, QtGui.QDialog):
@@ -193,3 +204,9 @@ class CustomizeWindow(Logger, QtGui.QDialog):
     @rating.setter
     def rating(self, val):
         self.ui.customRating.setText(val)
+
+
+class Error(QtGui.QMessageBox, Logger):
+
+    def __init__(self, exception):
+        super(Error, self).__init__()

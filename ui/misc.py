@@ -21,7 +21,7 @@ class C_QTextEdit(QtGui.QTextEdit):
 
     def __init__(self, parent=None):
         super(C_QTextEdit, self).__init__(parent)
-        self.setReadOnly(True)
+        self.setToolTip("Right click for file browser")
 
     def mousePressEvent(self, event):
         self.clicked.emit()

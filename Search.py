@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import bs4 as BeautifulSoup
+#import BeautifulSoup
 import re
 from Logger import Logger
 from RequestManager import RequestManager
@@ -53,21 +54,22 @@ class Search(Logger):
     def _search(cls, **kwargs):
         cls = cls()
         page_num = kwargs.get("page_num", 0)
-        num_pages = kwargs.get("num_pages")
+        num_pages = kwargs.get("num_pages", 0)
         sha_hash = kwargs.get("sha_hash", "")
         title = kwargs.get("title", "")
         url = cls.BASE_URL % (title, sha_hash, page_num)
         response = RequestManager.get(url)
         html_results = BeautifulSoup.BeautifulSoup(response)
         results = html_results.findAll("div", {"class": "it5"})
-        result_urls = [r.a.attrs[0][1] for r in results]
+        #result_urls = [r.a.attrs[0][1] for r in results]
+        result_urls = [r.a.attrs["href"] for r in results]
         if num_pages is None:
             pages = html_results.find("table", "ptt")
             if pages is not None:
                 try:
                     num_pages = int(pages.findAll("a")[-2].contents[0]) - 1
                 except IndexError:
-                    num_pages = 0
+                    pass
                 kwargs["num_pages"] = num_pages
         if page_num >= num_pages:
             return result_urls
