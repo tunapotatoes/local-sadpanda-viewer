@@ -9,8 +9,8 @@ import Exceptions
 class RequestClass(Logger):
     API_TIME_WAIT = 5
     API_RETRY_COUNT = 10
-    API_TIME_REQ_DELAY = 3
-    API_MAX_SEQUENTIAL_REQUESTS = 4
+    API_TIME_REQ_DELAY = 5
+    API_MAX_SEQUENTIAL_REQUESTS = 5
     API_TIME_TOO_FAST_WAIT = 100
     COOKIES = {"ipb_member_id": "", "ipb_pass_hash": ""}
     count = 0
@@ -84,7 +84,7 @@ class RequestClass(Logger):
                              self.API_TIME_TOO_FAST_WAIT)
             time.sleep(self.API_TIME_TOO_FAST_WAIT)
             return False
-        if "test/html" in content_type and "Your IP address" in response.text:
+        if "text/html" in content_type and "Your IP address" in response.text:
             raise(Exceptions.UserBannedError())
         try:
             if response.json().get("error") is not None:
