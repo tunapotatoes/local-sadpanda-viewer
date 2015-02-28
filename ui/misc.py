@@ -24,7 +24,10 @@ class C_QTextEdit(QtGui.QTextEdit):
         self.setToolTip("Right click for file browser")
 
     def mousePressEvent(self, event):
-        self.clicked.emit()
+        if event.button() == QtCore.Qt.RightButton:
+            self.clicked.emit()
+        else:
+            super(C_QTextEdit, self).mousePressEvent(event)
 
 
 class C_QFileDialog(QtGui.QFileDialog):

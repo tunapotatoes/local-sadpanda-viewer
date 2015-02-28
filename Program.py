@@ -2,20 +2,19 @@
 
 
 from PySide import QtGui
+from time import strftime
+from Logger import Logger
+from ui.gallery import C_QGallery
+from RequestManager import RequestManager
 import sys
 import os
-import math
 import io
 import re
 import json
 import logging
-from Logger import Logger
 import Threads
 import Windows
-from Gallery import Gallery
-from ui.gallery import C_QGallery
-from time import strftime
-from RequestManager import RequestManager
+import Exceptions
 
 
 class Program(QtGui.QApplication, Logger):
@@ -26,15 +25,12 @@ class Program(QtGui.QApplication, Logger):
 
     def __init__(self, args):
         super(Program, self).__init__(args)
-        # x = QtGui.QMessageBox()
-        # x.setText("adasdasd")
-        # x.exec()
         self.galleries = []
         self.threads = {}
         self.config = {}
         self.pages = [[]]
         self.page_number = 0
-        self.setGraphicsSystem("opengl")
+        self.error_window = Windows.Popup(self)
         self.main_window = Windows.MainWindow(self)
         if not os.path.exists(self.CONFIG_FILE):
             self.update_config(config=self.DEFAULT_CONFIG)
@@ -81,6 +77,7 @@ class Program(QtGui.QApplication, Logger):
     def load_config(self):
         config = io.open(self.CONFIG_FILE, "r", encoding="utf-8")
         self.config = json.load(config)
+        self.logger.debug("Config loaded: %s" % self.config)
         config.close()
         RequestManager.COOKIES = self.config["cookies"]
         self.main_window.member_id = self.member_id
@@ -106,20 +103,6 @@ class Program(QtGui.QApplication, Logger):
                                      ensure_ascii=False).encode("utf8"))
         config_file.close()
 
-    # def add_galleries(self, galleries):
-    #     self.galleries += galleries
-    #     for gallery in galleries:
-    #         self.pages[-1].append(gallery)
-    #         if len(self.pages[-1]) == self.PAGE_SIZE:
-    #             self.pages.append([])
-    #     self.main_window.add_galleries(galleries)
-
-    def remove_galleries(self, galleries):
-        self.main_window.hide_galleries(galleries)
-        for gallery in galleries:
-            self.logger.debug("Removing %s gallery." % gallery.title)
-            self.galleries.remove(gallery)
-
     def process_search(self, search_text):
         search_text = search_text.lower()
         rating = re.search(r"rating:(\S*)", search_text)
@@ -128,6 +111,10 @@ class Program(QtGui.QApplication, Logger):
             rating = rating.groups()[0]
             if rating[0] == "=" and rating[1] != "=":
                 rating = "=" + rating
+            try:
+                eval("0" + rating)
+            except:
+                raise Exceptions.InvalidRatingSearch()
         filter_words = re.findall(r"[\"]?[\-][\"]?([\w]*)[\"]?",
                                   search_text)
         search_text = re.sub(r"[\"]?[\-][\"]?([\w]*)[\"]?", "",
@@ -140,42 +127,37 @@ class Program(QtGui.QApplication, Logger):
         words = [w.replace("\"", "") for w in words]
         self.logger.info("Search words: %s" % words)
         self.logger.info("Filter words: %s" % filter_words)
+        self.logger.info("Rating function: %s" % rating)
         return words, filter_words, rating
 
     def search(self):
         search_text = self.main_window.search_text
-        self.hide_page()
         self.logger.info("Search_text: %s" % search_text)
         if search_text == "":
+            self.hide_page()
             self.setup_pages()
             self.show_page()
         else:
-            show_galleries = []
-            #hide_galleries = []
             words, filters, rating = self.process_search(search_text)
+            self.hide_page()
+            galleries = []
             for gallery in self.galleries:
                 title = re.sub("\W", " ", gallery.title.lower()).split()
                 tags = [t.replace(" ", "_").lower() for t in gallery.tags]
                 if rating and (not gallery.rating or
                                not eval(gallery.rating + rating)):
-                    #hide_galleries.append(gallery)
                     continue
-                elif any(w in tags for w in filters) or any(w in title
-                                                            for w in filters):
-                    #hide_galleries.append(gallery)
+                if any(w in tags for w in filters) or any(w in title
+                                                          for w in filters):
                     continue
-                elif all(self.in_tags(tags, w) for w in
-                         words) or len(words) == 0 or all(
-                             w in title for w in words):
-                    show_galleries.append(gallery)
-                # else:
-                #     hide_galleries.append(gallery)
-            #self.main_window.show_galleries(show_galleries)
-            #self.main_window.hide_galleries(hide_galleries)
-            self.setup_pages(show_galleries)
+                if all(self.in_search(tags, title, w) for w in words) or len(words) == 0:
+                    galleries.append(gallery)
+            self.setup_pages(galleries)
             self.show_page()
 
-    def in_tags(self, tags, input_tag):
+    def in_search(self, tags, title, input_tag):
+        if input_tag in title:
+            return True
         for tag in tags:
             if input_tag in tag:
                 return True
@@ -185,7 +167,6 @@ class Program(QtGui.QApplication, Logger):
         self.main_window.disable_all_buttons()
         self.logger.debug("Starting gallery thread.")
         assert not self.threads.get("gallery")
-        self.main_window.disable_all_buttons()
         self.threads["gallery"] = Threads.GalleryThread(self)
         self.threads["gallery"].start()
 
@@ -194,7 +175,6 @@ class Program(QtGui.QApplication, Logger):
         self.galleries += galleries
         self.logger.debug("Gallery thread done.")
         self.threads.pop("gallery")
-        self.main_window.enable_all_buttons()
         self.setup_pages()
         self.show_page()
 
@@ -206,6 +186,7 @@ class Program(QtGui.QApplication, Logger):
                 need_images.append(gallery)
             else:
                 show_galleries.append(gallery)
+        self.logger.info("Need images: %s" % need_images)
         self.generate_images(need_images)
         self.main_window.show_galleries(show_galleries)
 
@@ -254,13 +235,16 @@ class Program(QtGui.QApplication, Logger):
                 self.threads[key]._Thread__stop()
 
     def closeEvent(self, event=None):
-        self._kill_threads()
+        #self._kill_threads()
         if event is None:
-            self.close()
+            self.quit()
         else:
             event.accept()
 
     def switch_page(self):
+        if self.main_window.page_number in [-1, self.page_number]:
+            return
+        self.main_window.reset_scrollbar()
         self.hide_page()
         self.page_number = self.main_window.page_number
         self.show_page()
@@ -278,10 +262,15 @@ class Program(QtGui.QApplication, Logger):
     def inc_progress(self, val):
         self.main_window.inc_progress(val)
 
+    def thread_exception_handler(self, id, exception):
+        self.threads.pop(id)
+        self.error_window.exception_hook(*exception)
+
 if __name__ == "__main__":
     filename = strftime("%Y-%m-%d %H:%M:%S") + ".log"
     logging.basicConfig(level=logging.DEBUG,
                         filename=filename,
                         format="%(asctime)s: %(name)s %(levelname)s %(message)s")
     app = Program(sys.argv)
+    sys.excepthook = app.error_window.exception_hook
     sys.exit(app.exec_())

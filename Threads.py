@@ -5,27 +5,47 @@ from Logger import Logger
 import threading
 import weakref
 import copy
+import scandir
+import os
+import sys
+import math
 from decimal import Decimal
 from Gallery import Gallery
 from RequestManager import RequestManager
-import scandir
-import os
 from Search import Search
-import math
 
 
 class BaseThread(threading.Thread, Logger):
+    id = None
+
     def __init__(self, parent, **kwargs):
         super(BaseThread, self).__init__()
         self._parent = weakref.ref(parent)
+        self.basesignals = self.BaseSignals()
+        self.basesignals.exception.connect(self.parent.thread_exception_handler)
+
+    class BaseSignals(QtCore.QObject):
+        exception = QtCore.Signal(str, tuple)
 
     @property
     def parent(self):
         return self._parent()
 
+    def _run(self):
+        raise NotImplementedError
+
+    def run(self):
+        try:
+            self._run()
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except:
+            self.basesignals.exception.emit(self.id, sys.exc_info())
+
 
 class GalleryThread(BaseThread):
     IMAGE_EXTS = [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webm"]
+    id = "gallery"
 
     def __init__(self, parent, **kwargs):
         super(GalleryThread, self).__init__(parent)
@@ -35,7 +55,7 @@ class GalleryThread(BaseThread):
     class Signals(QtCore.QObject):
         end = QtCore.Signal(list)
 
-    def run(self):
+    def _run(self):
         self.find_galleries()
 
     def find_galleries(self):
@@ -54,8 +74,8 @@ class GalleryThread(BaseThread):
                         if ext in self.IMAGE_EXTS:
                             images.append(os.path.join(folder, f))
                     if images:
-                        self.logger.debug("For %s gallery, %s files found" %
-                                          (folder, images))
+                        # self.logger.debug("For %s gallery, %s files found" %
+                        #                   (folder, images))
                         dirs.append((folder,
                                      sorted(images, key=lambda f: f.lower())))
                     break
@@ -67,6 +87,7 @@ class GalleryThread(BaseThread):
 
 class ImageThread(BaseThread):
     IMAGE_WIDTH = 200
+    id = "image"
 
     def __init__(self, parent, galleries, **kwargs):
         super(ImageThread, self).__init__(parent)
@@ -81,7 +102,7 @@ class ImageThread(BaseThread):
         gallery = QtCore.Signal(list)
         end = QtCore.Signal()
 
-    def run(self):
+    def _run(self):
         self.generate_images()
         self.signals.end.emit()
 
@@ -108,6 +129,7 @@ class SearchThread(BaseThread):
     API_URL = "http://exhentai.org/api.php"
     BASE_REQUEST = {"method": "gdata", "gidlist": []}
     API_MAX_ENTRIES = 25
+    id = "metadata"
 
     def __init__(self, parent, **kwargs):
         super(SearchThread, self).__init__(parent)
@@ -122,7 +144,10 @@ class SearchThread(BaseThread):
         end = QtCore.Signal()
         progress = QtCore.Signal(Decimal)
 
-    def run(self):
+    def _run(self):
+        self.search()
+
+    def search(self):
         search_galleries = [g for g in self.galleries if
                             g.gid is None or self.force_search]
         self.logger.debug("Search galleries: %s" % search_galleries)

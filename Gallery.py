@@ -5,6 +5,7 @@ import io
 import json
 import re
 import Windows
+import Exceptions
 from Logger import Logger
 import weakref
 
@@ -13,6 +14,7 @@ class Gallery(Logger):
     IMAGE_EXTS = [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webm"]
     HASH_SIZE = 8192
     BASE_EX_URL = "http://exhentai.org/g/%s/%s/"
+    BUTTONS = ["editButton", "openButton"]
 
     def __init__(self, parent, folder_path, files):
         self._parent = weakref.ref(parent)
@@ -28,6 +30,10 @@ class Gallery(Logger):
             self.update_metadata({})
         else:
             self.load_metadata()
+
+        #  Workaround to ensure everything gets cleaned
+        self.save_metadata()
+        self.load_metadata()
         # Name represents the name from the path
         self.name = os.path.normpath(self.path).split(os.sep)[-1]
 
@@ -131,6 +137,24 @@ class Gallery(Logger):
         self.gid = val[0]
         self.token = val[1]
 
+    def set_button_status(self, button, status):
+        try:
+            getattr(getattr(self.C_QGallery, button), "setEnabled")(status)
+        except AttributeError:
+            pass
+
+    def disable_buttons(self, buttons):
+        [self.set_button_status(b, False) for b in buttons]
+
+    def enable_buttons(self, buttons):
+        [self.set_button_status(b, True) for b in buttons]
+
+    def disable_all_buttons(self):
+        self.disable_buttons(self.BUTTONS)
+
+    def enable_all_buttons(self):
+        self.enable_buttons(self.BUTTONS)
+
     def customize(self):
         self.customize_window = Windows.CustomizeWindow(self.parent, self)
         self.customize_window.tags = ", ".join(self.ctags)
@@ -145,12 +169,13 @@ class Gallery(Logger):
         self.ctitle = self.customize_window.title
         self.crating = self.customize_window.rating
         try:
-            new_id = Gallery.process_ex_url(self.customize_window.url)
-            if self.id != new_id:
+            old_id = self.id
+            self.id = Gallery.process_ex_url(self.customize_window.url)
+            if self.id != old_id:
                 self.force_metadata = True
-            self.id = new_id
+                self.parent.app.get_metadata([self])
         except:
-            pass
+            raise Exceptions.InvalidExUrl()
         self.customize_window.close()
         self.customize_window = None
         self.update_qgallery()
@@ -195,7 +220,8 @@ class Gallery(Logger):
         return sha1.hexdigest()
 
     def update_qgallery(self):
-        self.C_QGallery.update()
+        if self.C_QGallery:
+            self.C_QGallery.update()
 
     def clean_metadata(self, metadata):
         self.logger.debug("Cleaning metadata.\nInput data: %s" % metadata)
@@ -206,8 +232,8 @@ class Gallery(Logger):
             metadata = [self.clean_metadata(val) for val in metadata]
         elif isinstance(metadata, str):
             metadata = re.sub("&#039;", "'", metadata)
+            metadata = re.sub("&quot;", "\"", metadata)
             metadata = re.sub("(&amp;)", "&", metadata)
-            # I really, REALLY wish I had written a comment about whatever the fuck this regex does.
             #metadata = re.sub("&#(\d+)(;|(?=\s))", "", metadata)
         self.logger.debug("Output data: %s" % metadata)
         return metadata
@@ -218,4 +244,7 @@ class Gallery(Logger):
     @classmethod
     def process_ex_url(cls, url):
         split_url = url.split("/")
-        return int(split_url[-3]), split_url[-2]
+        if split_url[-1]:
+            return int(split_url[-2]), split_url[-1]
+        else:
+            return int(split_url[-3]), split_url[-2]

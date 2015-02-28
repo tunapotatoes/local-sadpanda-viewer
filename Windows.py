@@ -8,6 +8,8 @@ from ui.flow import FlowLayout
 from ui.misc import C_QFileDialog
 from ui.customize import Ui_Dialog
 import weakref
+import traceback
+import Exceptions
 
 
 class MainWindow(Logger, QtGui.QMainWindow):
@@ -17,21 +19,23 @@ class MainWindow(Logger, QtGui.QMainWindow):
                "submitButton",
                "cancelButton",
                "searchLine",
-               "navButton",
+               "nextButton",
+               "prevButton",
                "pageBox"]
 
     def __init__(self, app):
         super(MainWindow, self).__init__()
-        self._app = weakref.ref(app)
+        self.app = app
         self.button_lock = False
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
         self.ui.flowLayout = FlowLayout(self.ui.scrollAreaWidgetContents)
         self.ui.searchButton.clicked.connect(self.search)
-        self.ui.refreshButton.clicked.connect(self.app.get_metadata)
+        self.ui.refreshButton.clicked.connect(self.refresh_button_handler)
         self.ui.submitButton.clicked.connect(self.app.update_config)
         self.ui.cancelButton.clicked.connect(self.app.load_config)
-        self.ui.navButton.clicked.connect(self.app.switch_page)
+        self.ui.nextButton.clicked.connect(self.next_page)
+        self.ui.prevButton.clicked.connect(self.prev_page)
         self.ui.directories.clicked.connect(self.browse)
         position = self.frameGeometry()
         position.moveCenter(
@@ -40,13 +44,39 @@ class MainWindow(Logger, QtGui.QMainWindow):
         self.show()
         self.raise_()
 
+    def refresh_button_handler(self):
+        if self.ui.galleryBox.isChecked():
+            self.app.find_galleries()
+        if self.ui.metaBox.isChecked():
+            self.app.get_metadata()
+
+    def next_page(self):
+        next_page = self.page_number + 1
+        if next_page == self.max_page:
+            return
+        self.page_number = next_page
+
+    def prev_page(self):
+        prev_page = self.page_number - 1
+        if prev_page == -1:
+            return
+        self.page_number = prev_page
+
+    def reset_scrollbar(self):
+        scrollbar = self.ui.scrollArea.verticalScrollBar()
+        scrollbar.setValue(scrollbar.minimum())
+
     @property
     def page_number(self):
         return self.ui.pageBox.currentIndex()
 
+    @page_number.setter
+    def page_number(self, val):
+        self.ui.pageBox.setCurrentIndex(val)
+
     @property
-    def app(self):
-        return self._app()
+    def max_page(self):
+        return self.ui.pageBox.count()
 
     @property
     def member_id(self):
@@ -90,9 +120,11 @@ class MainWindow(Logger, QtGui.QMainWindow):
 
     def disable_all_buttons(self):
         self.disable_buttons(self.BUTTONS)
+        [g.disable_all_buttons() for g in self.app.current_page]
 
     def enable_all_buttons(self):
         self.enable_buttons(self.BUTTONS)
+        [g.enable_all_buttons() for g in self.app.current_page]
 
     def show_galleries(self, galleries):
         for gallery in galleries:
@@ -129,7 +161,7 @@ class MainWindow(Logger, QtGui.QMainWindow):
         self.ui.progressBar.setValue(self.progress)
 
     def browse(self):
-        self.logger.debug("Browsing for file")
+        self.logger.debug("Browsing for files.")
         browser = C_QFileDialog()
         browser.exec_()
         if browser.open_clicked:
@@ -143,16 +175,17 @@ class MainWindow(Logger, QtGui.QMainWindow):
         self.enable_all_buttons()
 
     def configure_combo_box(self):
-        self.ui.pageLabel.setText("of %s" % self.app.page_count)
+        self.ui.pageBox.currentIndexChanged.connect(lambda x: None)
+        #self.ui.pageLabel.setText("of %s" % self.app.page_count)
         self.ui.pageBox.clear()
-        self.ui.pageBox.addItems(list(
-            map(str, range(1, self.app.page_count + 1))))
+        self.ui.pageBox.addItems(list(map(lambda x: "Page " + str(x),
+                                          range(1, self.app.page_count + 1))))
+        self.ui.pageBox.currentIndexChanged.connect(self.app.switch_page)
 
 
 class CustomizeWindow(Logger, QtGui.QDialog):
-    def __init__(self, parent, gallery):
-        super(CustomizeWindow, self).__init__(parent)
-        self._parent = parent
+    def __init__(self, app, gallery):
+        super(CustomizeWindow, self).__init__(app)
         self._gallery = weakref.ref(gallery)
         self.ui = Ui_Dialog()
         self.ui.setupUi(self)
@@ -164,10 +197,6 @@ class CustomizeWindow(Logger, QtGui.QDialog):
         # self.move(position.topLeft())
         self.show()
         self.raise_()
-
-    @property
-    def parent(self):
-        return self._parent()
 
     @property
     def gallery(self):
@@ -206,7 +235,26 @@ class CustomizeWindow(Logger, QtGui.QDialog):
         self.ui.customRating.setText(val)
 
 
-class Error(QtGui.QMessageBox, Logger):
+class Popup(QtGui.QMessageBox, Logger):
 
-    def __init__(self, exception):
-        super(Error, self).__init__()
+    def __init__(self, app):
+        super(Popup, self).__init__()
+        self.app = app
+
+    def exception_hook(self, extype, exvalue, extraceback):
+        fatal = True  # Default to true for unhandled exceptions
+        if issubclass(extype, Exceptions.BaseException):
+            fatal = exvalue.fatal
+            self.setText(exvalue.msg)
+        else:
+            self.setText("An unhandled %s exception has occurred. The program will now shutdown." % str(extype))
+            self.logger.error("An unhandled %s exception occured." % str(extype))
+        self.setInformativeText(traceback.print_tb(extraceback))
+        self.logger.error(traceback.print_tb(extraceback))
+        self.show()
+        self.exec_()
+        if fatal:
+            self.app.closeEvent()
+        else:
+            self.app.main_window.enable_all_buttons()
+            self.app.main_window.clear_progress_bar()
