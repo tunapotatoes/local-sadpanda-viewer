@@ -1,9 +1,5 @@
 local-sandpanda-viewer
 =====================
-DO NOT USE THIS RIGHT NOW.
----------------------
-When the this message is gone, you are free to use it.
-
 Overview
 ---------------------
 This provides a simple application for indexing and searching local copies of

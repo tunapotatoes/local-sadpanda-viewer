@@ -267,7 +267,7 @@ class Program(QtGui.QApplication, Logger):
         self.error_window.exception_hook(*exception)
 
 if __name__ == "__main__":
-    filename = strftime("%Y-%m-%d %H:%M:%S") + ".log"
+    filename = strftime("%Y-%m-%d-%H.%M.%S") + ".log"
     logging.basicConfig(level=logging.DEBUG,
                         filename=filename,
                         format="%(asctime)s: %(name)s %(levelname)s %(message)s")

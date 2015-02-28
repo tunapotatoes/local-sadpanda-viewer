@@ -190,7 +190,7 @@ class CustomizeWindow(Logger, QtGui.QDialog):
         self.ui = Ui_Dialog()
         self.ui.setupUi(self)
         self.ui.submitButton.clicked.connect(self.gallery.save_customization)
-        self.setWindowFlags(self.windowFlags() | QtCore.Qt.FramelessWindowHint)
+        self.setWindowFlags(self.windowFlags() | QtCore.Qt.FramelessWindowHint | QtCore.Qt.Popup | QtCore.Qt.WindowSystemMenuHint)
         # position = self.frameGeometry()
         # position.moveCenter(
         #     QtGui.QDesktopWidget().availableGeometry().center())
