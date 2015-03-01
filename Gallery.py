@@ -248,7 +248,7 @@ class FolderGallery(Gallery):
 
     def generate_image_hash(self):
         with open(self.files[0], "rb") as image:
-            super(FolderGallery, self).generate_image_hash(image)
+            return super(FolderGallery, self).generate_image_hash(image)
 
 
 class ArchiveGallery(Gallery):
@@ -317,4 +317,4 @@ class ArchiveGallery(Gallery):
             archive.comment = json.dumps(self.metadata).encode("utf-8")
 
     def generate_image_hash(self):
-        super(ArchiveGallery, self).generate_image_hash(self.raw_image)
+        return super(ArchiveGallery, self).generate_image_hash(self.raw_image)
