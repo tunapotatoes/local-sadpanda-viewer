@@ -33,15 +33,15 @@ class RequestClass(Logger):
 
     def _rest(self, method, url, **kwargs):
         retry_count = kwargs.pop("retry_count", self.API_RETRY_COUNT)
-        time.sleep(self.API_TIME_REQ_DELAY)
-        if self.count >= self.API_MAX_SEQUENTIAL_REQUESTS:
-            time.sleep(self.API_TIME_WAIT)
-            self.count = 0
-        self.count += 1
         payload = kwargs.pop("payload", None)
         if payload:
             payload = json.dumps(payload)
         while retry_count >= 0:
+            time.sleep(self.API_TIME_REQ_DELAY)
+            if self.count >= self.API_MAX_SEQUENTIAL_REQUESTS:
+                time.sleep(self.API_TIME_WAIT)
+                self.count = 0
+            self.count += 1
             self.logger.info("Sending %s request to %s with payload %s" %
                              (method, url, payload))
             try:
@@ -80,7 +80,7 @@ class RequestClass(Logger):
         if "image/gif" in content_type:
             raise(Exceptions.BadCredentialsError())
         if "text/html" in content_type and "You are opening" in response.text:
-            self.logger.info("Detected that we are overloading SP. Waiting for %ss" %
+            self.logger.info("Detected that we are overloading SP. Waiting for %s seconds" %
                              self.API_TIME_TOO_FAST_WAIT)
             time.sleep(self.API_TIME_TOO_FAST_WAIT)
             return False

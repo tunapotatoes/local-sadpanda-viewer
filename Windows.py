@@ -249,8 +249,8 @@ class Popup(QtGui.QMessageBox, Logger):
         else:
             self.setText("An unhandled %s exception has occurred. The program will now shutdown." % str(extype))
             self.logger.error("An unhandled %s exception occured." % str(extype))
-        self.setInformativeText(traceback.print_tb(extraceback))
-        self.logger.error(traceback.print_tb(extraceback))
+        #  self.logger.error(traceback.print_tb(extraceback))
+        self.logger.error("".join(traceback.format_tb(extraceback)))
         self.show()
         self.exec_()
         if fatal:
