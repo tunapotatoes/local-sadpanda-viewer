@@ -44,6 +44,9 @@ class MainWindow(Logger, QtGui.QMainWindow):
         self.show()
         self.raise_()
 
+    def closeEvent(self, event=None):
+        self.app.close()
+
     def refresh_button_handler(self):
         if self.ui.galleryBox.isChecked():
             self.app.find_galleries()
@@ -254,7 +257,7 @@ class Popup(QtGui.QMessageBox, Logger):
         self.show()
         self.exec_()
         if fatal:
-            self.app.closeEvent()
+            self.app.close()
         else:
             self.app.main_window.enable_all_buttons()
             self.app.main_window.clear_progress_bar()

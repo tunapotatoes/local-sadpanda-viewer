@@ -234,12 +234,11 @@ class Program(QtGui.QApplication, Logger):
             if self.threads[key].isAlive():
                 self.threads[key]._Thread__stop()
 
-    def closeEvent(self, event=None):
+    def close(self):
         #self._kill_threads()
-        if event is None:
-            self.quit()
-        else:
-            event.accept()
+        for gallery in self.galleries:
+            gallery.__del__()
+        self.quit()
 
     def switch_page(self):
         if self.main_window.page_number in [-1, self.page_number]:

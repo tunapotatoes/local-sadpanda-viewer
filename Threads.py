@@ -10,7 +10,7 @@ import os
 import sys
 import math
 from decimal import Decimal
-from Gallery import Gallery
+import Gallery
 from RequestManager import RequestManager
 from Search import Search
 
@@ -45,6 +45,7 @@ class BaseThread(threading.Thread, Logger):
 
 class GalleryThread(BaseThread):
     IMAGE_EXTS = [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webm"]
+    ARCHIVE_EXTS = [".zip"]
     id = "gallery"
 
     def __init__(self, parent, **kwargs):
@@ -61,28 +62,26 @@ class GalleryThread(BaseThread):
     def find_galleries(self):
         paths = map(os.path.expanduser, self.parent.dirs)
         dirs = []
+        archives = []
         for path in paths:
-            skip = True
-            for folder, _, _ in scandir.walk(path):
-                if skip:
-                    skip = False
-                    continue
-                for _, _, files in scandir.walk(folder):
-                    images = []
-                    for f in files:
-                        ext = os.path.splitext(f)[1]
-                        if ext in self.IMAGE_EXTS:
-                            images.append(os.path.join(folder, f))
-                    if images:
-                        # self.logger.debug("For %s gallery, %s files found" %
-                        #                   (folder, images))
-                        dirs.append((folder,
-                                     sorted(images, key=lambda f: f.lower())))
-                    break
+            for base_folder, folders, files in scandir.walk(path):
+                images = []
+                for f in files:
+                    ext = os.path.splitext(f)[-1].lower()
+                    if ext in self.IMAGE_EXTS:
+                        images.append(os.path.join(base_folder, f))
+                    elif ext in self.ARCHIVE_EXTS:
+                        archives.append(os.path.join(base_folder, f))
+                if images:
+                    dirs.append((base_folder,
+                                 sorted(images, key=lambda f: f.lower())))
         existing_paths = [g.path for g in self.parent.galleries]
-        galleries = [Gallery(self.parent.main_window, r[0], r[1])
-                     for r in dirs if r[0] not in existing_paths]
-        self.signals.end.emit(galleries)
+        folder_galleries = [Gallery.FolderGallery(self.parent.main_window,
+                                                  r[0], r[1])
+                            for r in dirs if r[0] not in existing_paths]
+        archive_galleries = [Gallery.ArchiveGallery(self.parent.main_window, r)
+                             for r in archives if f not in existing_paths]
+        self.signals.end.emit(folder_galleries + archive_galleries)
 
 
 class ImageThread(BaseThread):
@@ -114,7 +113,12 @@ class ImageThread(BaseThread):
         send_galleries = []
         for gallery in self.galleries:
             if not gallery.C_QGallery:
-                gallery.image = QtGui.QImage(gallery.files[0]).scaledToWidth(
+                if isinstance(gallery, Gallery.FolderGallery):
+                    gallery.image = QtGui.QImage(gallery.files[0])
+                elif isinstance(gallery, Gallery.ArchiveGallery):
+                    gallery.image = QtGui.QImage()
+                    assert gallery.image.loadFromData(gallery.raw_image.read())
+                gallery.image = gallery.image.scaledToWidth(
                     self.IMAGE_WIDTH, QtCore.Qt.SmoothTransformation)
                 send_galleries.append(gallery)
                 self.signals.progress.emit(inc_val)
