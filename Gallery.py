@@ -79,7 +79,7 @@ class Gallery(Logger):
 
     @property
     def tags(self):
-        return self.extags + self.ctags
+        return list(set(self.extags + self.ctags))
 
     @property
     def rating(self):
@@ -243,8 +243,6 @@ class FolderGallery(Gallery):
             self.update_metadata({})
         else:
             self.load_metadata()
-        self.save_metadata()
-        self.load_metadata()
 
     def generate_image_hash(self):
         with open(self.files[0], "rb") as image:
@@ -258,6 +256,7 @@ class ArchiveGallery(Gallery):
         self.archive = archive
         self.name, self.archive_type = os.path.splitext(os.path.basename(self.archive))
         self.raw_files = self.find_files()
+        assert len(self.raw_files) > 0
         self.temp_dir = tempfile.mkdtemp()
         try:
             self.load_metadata()

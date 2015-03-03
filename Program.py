@@ -25,18 +25,21 @@ class Program(QtGui.QApplication, Logger):
 
     def __init__(self, args):
         super(Program, self).__init__(args)
+        self.error_window = Windows.Popup(self)
+        self.main_window = Windows.MainWindow(self)
         self.galleries = []
         self.threads = {}
         self.config = {}
         self.pages = [[]]
         self.page_number = 0
-        self.error_window = Windows.Popup(self)
-        self.main_window = Windows.MainWindow(self)
+
+    def exec_(self):
         if not os.path.exists(self.CONFIG_FILE):
             self.update_config(config=self.DEFAULT_CONFIG)
         else:
             self.load_config()
         self.find_galleries()
+        return super(Program, self).exec_()
 
     @property
     def current_page(self):

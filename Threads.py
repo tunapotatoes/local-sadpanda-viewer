@@ -79,8 +79,15 @@ class GalleryThread(BaseThread):
         folder_galleries = [Gallery.FolderGallery(self.parent.main_window,
                                                   r[0], r[1])
                             for r in dirs if r[0] not in existing_paths]
-        archive_galleries = [Gallery.ArchiveGallery(self.parent.main_window, r)
-                             for r in archives if f not in existing_paths]
+        archive_galleries = []
+        for r in archives:
+            if r in existing_paths:
+                continue
+            try:
+                archive_galleries.append(
+                    Gallery.ArchiveGallery(self.parent.main_window, r))
+            except AssertionError:
+                pass
         self.signals.end.emit(folder_galleries + archive_galleries)
 
 
@@ -154,7 +161,8 @@ class SearchThread(BaseThread):
     def search(self):
         search_galleries = [g for g in self.galleries if
                             g.gid is None or self.force_search]
-        self.logger.debug("Search galleries: %s" % search_galleries)
+        self.logger.debug("Search galleries: %s" % [g.name
+                                                    for g in search_galleries])
         try:
             self.inc_val = (Decimal(100.0) /
                             Decimal(len(search_galleries) +
@@ -166,10 +174,10 @@ class SearchThread(BaseThread):
             search_results = Search.search_by_gallery(gallery)
             self.signals.progress.emit(self.inc_val)
             if search_results:
-                gallery.id = Gallery.process_ex_url(search_results)
+                gallery.id = Gallery.Gallery.process_ex_url(search_results)
             if gallery.gid:
                 need_metadata_galleries.append(gallery)
-            if len(need_metadata_galleries) == self.API_MAX_ENTRIES:
+            if len(need_metadata_galleries) == 3:
                 self.get_metadata(need_metadata_galleries)
                 need_metadata_galleries = []
         if need_metadata_galleries:

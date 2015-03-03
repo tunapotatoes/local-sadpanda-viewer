@@ -2,17 +2,19 @@
 import requests
 import time
 import json
+import random
 from Logger import Logger
 import Exceptions
 
 
 class RequestClass(Logger):
     API_TIME_WAIT = 5
-    API_RETRY_COUNT = 10
+    API_RETRY_COUNT = 5
     API_TIME_REQ_DELAY = 5
-    API_MAX_SEQUENTIAL_REQUESTS = 5
+    API_MAX_SEQUENTIAL_REQUESTS = 3
     API_TIME_TOO_FAST_WAIT = 100
     COOKIES = {"ipb_member_id": "", "ipb_pass_hash": ""}
+    HEADERS = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:30.0) Gecko/20100101 Firefox/30.0"}  # No idea if this actually helps
     count = 0
 
     @property
@@ -37,20 +39,19 @@ class RequestClass(Logger):
         if payload:
             payload = json.dumps(payload)
         while retry_count >= 0:
-            time.sleep(self.API_TIME_REQ_DELAY)
+            time.sleep(self.API_TIME_REQ_DELAY * random.randint(100, 300)/100)
             if self.count >= self.API_MAX_SEQUENTIAL_REQUESTS:
-                time.sleep(self.API_TIME_WAIT)
+                time.sleep(self.API_TIME_WAIT * random.randint(100, 300)/100)
                 self.count = 0
             self.count += 1
             self.logger.info("Sending %s request to %s with payload %s" %
                              (method, url, payload))
-            try:
-                response = getattr(requests,
-                                   method)(url, data=payload,
-                                           cookies=self.COOKIES, **kwargs)
-            except TypeError:
-                response = getattr(requests,
-                                   method)(url, cookies=self.COOKIES, **kwargs)
+            response = getattr(requests,
+                               method)(url, data=payload, headers=self.HEADERS,
+                                       cookies=self.COOKIES, **kwargs)
+            # except TypeError:
+            #     response = getattr(requests,
+            #                        method)(url, cookies=self.COOKIES, **kwargs)
             if self.validate_response(response):
                 break
             else:

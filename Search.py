@@ -53,6 +53,7 @@ class Search(Logger):
     @classmethod
     def _search(cls, **kwargs):
         cls = cls()
+        recursive = False
         page_num = kwargs.get("page_num", 0)
         num_pages = kwargs.get("num_pages", 0)
         sha_hash = kwargs.get("sha_hash", "")
@@ -71,7 +72,7 @@ class Search(Logger):
                 except IndexError:
                     pass
                 kwargs["num_pages"] = num_pages
-        if page_num >= num_pages:
+        if not recursive or page_num >= num_pages:
             return result_urls
         if page_num == 0:
             kwargs["page_num"] = 1
