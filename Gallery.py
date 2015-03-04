@@ -9,7 +9,7 @@ import Windows
 import Exceptions
 from Logger import Logger
 import weakref
-import zipfile
+import czipfile
 import tempfile
 import contextlib
 
@@ -271,7 +271,7 @@ class ArchiveGallery(Gallery):
     def archive_file(self, mode):
         assert mode is not "w"   # Extremely dangerous
         if self.archive_type == ".zip":
-            archive = zipfile.ZipFile(self.archive, mode)
+            archive = czipfile.ZipFile(self.archive, mode)
         yield archive
         archive.close()
 
@@ -306,7 +306,8 @@ class ArchiveGallery(Gallery):
                 ext = os.path.splitext(f)[-1].lower()
                 if ext in self.IMAGE_EXTS:
                     raw_files.append(f)
-        return sorted(raw_files, key=lambda f: f.lower())
+        return list(map(os.path.normpath,
+                        sorted(raw_files, key=lambda f: f.lower())))
 
     def load_metadata(self):
         with self.archive_file("r") as archive:

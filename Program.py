@@ -189,7 +189,7 @@ class Program(QtGui.QApplication, Logger):
                 need_images.append(gallery)
             else:
                 show_galleries.append(gallery)
-        self.logger.info("Need images: %s" % need_images)
+        self.logger.info("Need images: %s" % [g.name for g in need_images])
         self.generate_images(need_images)
         self.main_window.show_galleries(show_galleries)
 
