@@ -17,7 +17,7 @@ import contextlib
 class Gallery(Logger):
     IMAGE_EXTS = [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webm"]
     HASH_SIZE = 8192
-    BASE_EX_URL = "http://exhentai.org/g/%s/%s/"
+    BASE_EX_URL = r"http://exhentai.org/g/%s/%s/"
     BUTTONS = ["editButton", "openButton"]
 
     def __init__(self, parent):
@@ -235,10 +235,10 @@ class Gallery(Logger):
 class FolderGallery(Gallery):
     def __init__(self, parent, path, files):
         super(FolderGallery, self).__init__(parent)
-        self.path = path
+        self.path = os.path.normpath(path)
         self.name = os.path.normpath(self.path).split(os.sep)[-1]
         self.metadata_file = os.path.join(self.path, ".metadata.json")
-        self.files = files
+        self.files = list(map(os.path.normpath, files))
         if not os.path.exists(self.metadata_file):
             self.update_metadata({})
         else:
@@ -253,11 +253,11 @@ class ArchiveGallery(Gallery):
 
     def __init__(self, parent, archive):
         super(ArchiveGallery, self).__init__(parent)
-        self.archive = archive
+        self.archive = os.path.normpath(archive)
         self.name, self.archive_type = os.path.splitext(os.path.basename(self.archive))
         self.raw_files = self.find_files()
         assert len(self.raw_files) > 0
-        self.temp_dir = tempfile.mkdtemp()
+        self.temp_dir = os.path.normpath(tempfile.mkdtemp())
         try:
             self.load_metadata()
         except ValueError:
@@ -295,7 +295,8 @@ class ArchiveGallery(Gallery):
     def files(self):
         if not os.path.exists(os.path.join(self.temp_dir, self.raw_files[0])):
             self.extract()
-        return list(map(lambda f: os.path.join(self.temp_dir, f), self.raw_files))
+        return list(map(lambda f: os.path.normpath(os.path.join(
+            self.temp_dir, f)), self.raw_files))
 
     def find_files(self):
         raw_files = []

@@ -137,7 +137,7 @@ class ImageThread(BaseThread):
 
 
 class SearchThread(BaseThread):
-    API_URL = "http://exhentai.org/api.php"
+    API_URL = r"http://exhentai.org/api.php"
     BASE_REQUEST = {"method": "gdata", "gidlist": []}
     API_MAX_ENTRIES = 25
     id = "metadata"

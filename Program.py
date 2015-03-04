@@ -232,13 +232,7 @@ class Program(QtGui.QApplication, Logger):
         self.main_window.enable_all_buttons()
         [g.update_qgallery() for g in self.galleries]
 
-    def _kill_threads(self):
-        for key in self.threads:
-            if self.threads[key].isAlive():
-                self.threads[key]._Thread__stop()
-
     def close(self):
-        #self._kill_threads()
         for gallery in self.galleries:
             gallery.__del__()
         self.quit()

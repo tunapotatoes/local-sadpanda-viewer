@@ -8,7 +8,6 @@ from ui.flow import FlowLayout
 from ui.misc import C_QFileDialog
 from ui.customize import Ui_Dialog
 import weakref
-import traceback
 import Exceptions
 
 
@@ -179,7 +178,6 @@ class MainWindow(Logger, QtGui.QMainWindow):
 
     def configure_combo_box(self):
         self.ui.pageBox.currentIndexChanged.connect(lambda x: None)
-        #self.ui.pageLabel.setText("of %s" % self.app.page_count)
         self.ui.pageBox.clear()
         self.ui.pageBox.addItems(list(map(lambda x: "Page " + str(x),
                                           range(1, self.app.page_count + 1))))
