@@ -262,6 +262,8 @@ class Program(QtGui.QApplication, Logger):
         self.error_window.exception_hook(*exception)
 
 if __name__ == "__main__":
+    reload(sys)
+    sys.setdefaultencoding("utf-8")
     filename = strftime("%Y-%m-%d-%H.%M.%S") + ".log"
     logging.basicConfig(level=logging.DEBUG,
                         filename=filename,

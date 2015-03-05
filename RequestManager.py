@@ -13,9 +13,12 @@ class RequestClass(Logger):
     API_TIME_REQ_DELAY = 5
     API_MAX_SEQUENTIAL_REQUESTS = 3
     API_TIME_TOO_FAST_WAIT = 100
+    SEQ_TIME_DIFF = 10
     COOKIES = {"ipb_member_id": "", "ipb_pass_hash": ""}
     HEADERS = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:30.0) Gecko/20100101 Firefox/30.0"}  # No idea if this actually helps
     count = 0
+    prevtime = 0
+    in_use = False
 
     @property
     def id(self):
@@ -34,18 +37,25 @@ class RequestClass(Logger):
         self.COOKIES["ipb_pass_hash"] = val
 
     def _rest(self, method, url, **kwargs):
+        assert not self.in_use  # Never should happen, but just in case
+        self.in_use = True
         retry_count = kwargs.pop("retry_count", self.API_RETRY_COUNT)
         payload = kwargs.pop("payload", None)
         if payload:
             payload = json.dumps(payload)
         while retry_count >= 0:
-            time.sleep(self.API_TIME_REQ_DELAY * random.randint(100, 300)/100)
-            if self.count >= self.API_MAX_SEQUENTIAL_REQUESTS:
+            gen_time_sleep = self.API_TIME_REQ_DELAY * random.randint(100, 300)/100
+            time_diff = time.time() - self.prevtime
+            if time_diff <= gen_time_sleep:
+                time.sleep(gen_time_sleep)
+            sequential = time_diff <= self.SEQ_TIME_DIFF
+            if sequential and self.count >= self.API_MAX_SEQUENTIAL_REQUESTS:
                 time.sleep(self.API_TIME_WAIT * random.randint(100, 300)/100)
                 self.count = 0
             self.count += 1
             self.logger.info("Sending %s request to %s with payload %s" %
                              (method, url, payload))
+            self.prevtime = time.time()
             response = getattr(requests,
                                method)(url, data=payload, headers=self.HEADERS,
                                        cookies=self.COOKIES, **kwargs)
@@ -58,6 +68,7 @@ class RequestClass(Logger):
                 retry_count -= 1
                 self.logger.warning(
                     "Request failed, retry with %s tries left." % retry_count)
+        self.in_use = False
         if not retry_count >= 0:
             self.logger.warning("Request ran out of retry attempts.")
             return
@@ -96,13 +107,11 @@ class RequestClass(Logger):
             pass
         return True
 
-    def __getattr__(self, name):
-        if name is "name":  # Oh god I need to fix this
-            raise AttributeError
+    def get(self, *args, **kwargs):
+        return self._rest("get", *args, **kwargs)
 
-        def handler(*args, **kwargs):
-            return self._rest(name, *args, **kwargs)
-        return handler
+    def post(self, *args, **kwargs):
+        return self._rest("post", *args, **kwargs)
 
 
 RequestManager = RequestClass()

@@ -9,7 +9,7 @@ import Windows
 import Exceptions
 from Logger import Logger
 import weakref
-import czipfile
+import zipfile
 import tempfile
 import contextlib
 
@@ -206,7 +206,6 @@ class Gallery(Logger):
             self.C_QGallery.update()
 
     def clean_metadata(self, metadata):
-        self.logger.debug("Cleaning metadata.\nInput data: %s" % metadata)
         if isinstance(metadata, dict):
             metadata = {key: self.clean_metadata(metadata[key])
                         for key in metadata}
@@ -217,7 +216,6 @@ class Gallery(Logger):
             metadata = re.sub("&quot;", "\"", metadata)
             metadata = re.sub("(&amp;)", "&", metadata)
             #metadata = re.sub("&#(\d+)(;|(?=\s))", "", metadata)
-        self.logger.debug("Output data: %s" % metadata)
         return metadata
 
     def generate_ex_url(self):
@@ -272,7 +270,7 @@ class ArchiveGallery(Gallery):
     def archive_file(self, mode):
         assert mode is not "w"   # Extremely dangerous
         if self.archive_type == ".zip":
-            archive = czipfile.ZipFile(self.archive, mode)
+            archive = zipfile.ZipFile(self.archive, mode)
         yield archive
         archive.close()
 
