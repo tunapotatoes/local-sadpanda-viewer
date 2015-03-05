@@ -60,7 +60,8 @@ class GalleryThread(BaseThread):
         self.find_galleries()
 
     def find_galleries(self):
-        paths = map(os.path.expanduser, self.parent.dirs)
+        paths = map(os.path.normpath, map(os.path.expanduser,
+                                          self.parent.dirs))
         dirs = []
         archives = []
         for path in paths:
@@ -93,6 +94,7 @@ class GalleryThread(BaseThread):
 
 class ImageThread(BaseThread):
     IMAGE_WIDTH = 200
+    EMIT_FREQ = 25
     id = "image"
 
     def __init__(self, parent, galleries, **kwargs):
@@ -129,7 +131,7 @@ class ImageThread(BaseThread):
                     self.IMAGE_WIDTH, QtCore.Qt.SmoothTransformation)
                 send_galleries.append(gallery)
                 self.signals.progress.emit(inc_val)
-                if len(send_galleries) > 25:
+                if len(send_galleries) == self.EMIT_FREQ:
                     self.signals.gallery.emit(send_galleries)
                     send_galleries = []
         if send_galleries:
@@ -137,7 +139,7 @@ class ImageThread(BaseThread):
 
 
 class SearchThread(BaseThread):
-    API_URL = r"http://exhentai.org/api.php"
+    API_URL = "http://exhentai.org/api.php"
     BASE_REQUEST = {"method": "gdata", "gidlist": []}
     API_MAX_ENTRIES = 25
     id = "metadata"
@@ -145,8 +147,6 @@ class SearchThread(BaseThread):
     def __init__(self, parent, **kwargs):
         super(SearchThread, self).__init__(parent)
         self.galleries = kwargs.get("galleries") or self.parent.galleries
-        self.force_search = kwargs.get("force_search", False)
-        self.force_metadata = kwargs.get("force_metadata", False)
         self.signals = self.Signals()
         self.signals.progress.connect(self.parent.inc_progress)
         self.signals.end.connect(self.parent.get_metadata_done)
@@ -160,7 +160,7 @@ class SearchThread(BaseThread):
 
     def search(self):
         search_galleries = [g for g in self.galleries if
-                            g.gid is None or self.force_search]
+                            g.gid is None]
         self.logger.debug("Search galleries: %s" % [g.name
                                                     for g in search_galleries])
         try:

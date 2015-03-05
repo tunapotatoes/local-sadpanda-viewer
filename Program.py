@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 
 from PySide import QtGui
@@ -150,8 +150,7 @@ class Program(QtGui.QApplication, Logger):
                 if rating and (not gallery.rating or
                                not eval(gallery.rating + rating)):
                     continue
-                if any(w in tags for w in filters) or any(w in title
-                                                          for w in filters):
+                if any(self.in_search(tags, title, w) for w in filters):
                     continue
                 if all(self.in_search(tags, title, w) for w in words) or len(words) == 0:
                     galleries.append(gallery)

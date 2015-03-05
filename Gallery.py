@@ -17,7 +17,7 @@ import contextlib
 class Gallery(Logger):
     IMAGE_EXTS = [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webm"]
     HASH_SIZE = 8192
-    BASE_EX_URL = r"http://exhentai.org/g/%s/%s/"
+    BASE_EX_URL = "http://exhentai.org/g/%s/%s/"
     BUTTONS = ["editButton", "openButton"]
 
     def __init__(self, parent):
@@ -262,6 +262,7 @@ class ArchiveGallery(Gallery):
             self.load_metadata()
         except ValueError:
             self.update_metadata({})
+        self.logger.info("Raw files: %s" % self.raw_files)
 
     @property
     def path(self):
@@ -306,8 +307,7 @@ class ArchiveGallery(Gallery):
                 ext = os.path.splitext(f)[-1].lower()
                 if ext in self.IMAGE_EXTS:
                     raw_files.append(f)
-        return list(map(os.path.normpath,
-                        sorted(raw_files, key=lambda f: f.lower())))
+        return sorted(raw_files, key=lambda f: f.lower())
 
     def load_metadata(self):
         with self.archive_file("r") as archive:
