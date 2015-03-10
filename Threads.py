@@ -100,7 +100,7 @@ class GalleryThread(BaseThread):
                 pass
             except IOError:
                 bad_permissions.append(r)
-            except zipfile.BadZipFile:
+            except zipfile.BadZipfile:
                 bad_files.append(r)
         self.signals.end.emit(folder_galleries + archive_galleries)
         if bad_permissions or bad_files:
