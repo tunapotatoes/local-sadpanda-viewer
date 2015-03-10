@@ -8,9 +8,9 @@ import Exceptions
 
 
 class RequestClass(Logger):
-    API_TIME_WAIT = 5
+    API_TIME_WAIT = 3
     API_RETRY_COUNT = 5
-    API_TIME_REQ_DELAY = 5
+    API_TIME_REQ_DELAY = 3
     API_MAX_SEQUENTIAL_REQUESTS = 3
     API_TIME_TOO_FAST_WAIT = 100
     SEQ_TIME_DIFF = 10
@@ -44,15 +44,16 @@ class RequestClass(Logger):
         if payload:
             payload = json.dumps(payload)
         while retry_count >= 0:
-            gen_time_sleep = self.API_TIME_REQ_DELAY * random.randint(100, 300)/100
+            gen_time_sleep = self.API_TIME_REQ_DELAY * random.randint(100, 200)/100
             time_diff = time.time() - self.prevtime
             if time_diff <= gen_time_sleep:
                 time.sleep(gen_time_sleep)
             sequential = time_diff <= self.SEQ_TIME_DIFF
             if sequential and self.count >= self.API_MAX_SEQUENTIAL_REQUESTS:
-                time.sleep(self.API_TIME_WAIT * random.randint(100, 300)/100)
+                time.sleep(self.API_TIME_WAIT * random.randint(100, 200)/100)
                 self.count = 0
-            self.count += 1
+            if sequential:
+                self.count += 1
             self.logger.info("Sending %s request to %s with payload %s" %
                              (method, url, payload))
             self.prevtime = time.time()
@@ -90,6 +91,7 @@ class RequestClass(Logger):
             self.logger.warning("Error code: %s")
             return False
         if "image/gif" in content_type:
+            self.in_use = False
             raise(Exceptions.BadCredentialsError())
         if "text/html" in content_type and "You are opening" in response.text:
             self.logger.info("Detected that we are overloading SP. Waiting for %s seconds" %
@@ -97,6 +99,7 @@ class RequestClass(Logger):
             time.sleep(self.API_TIME_TOO_FAST_WAIT)
             return False
         if "text/html" in content_type and "Your IP address" in response.text:
+            self.in_use = False
             raise(Exceptions.UserBannedError())
         try:
             if response.json().get("error") is not None:

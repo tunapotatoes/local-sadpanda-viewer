@@ -101,9 +101,10 @@ class Program(QtGui.QApplication, Logger):
 
     def save_config(self):
         self.logger.debug("Saving config.")
-        config_file = open(self.CONFIG_FILE, "wb")
+        config_file = open(self.CONFIG_FILE, "r+b")
         config_file.write(json.dumps(self.config,
                                      ensure_ascii=False).encode("utf8"))
+        config_file.truncate()
         config_file.close()
 
     def process_search(self, search_text):
@@ -232,6 +233,9 @@ class Program(QtGui.QApplication, Logger):
         [g.update_qgallery() for g in self.galleries]
 
     def close(self):
+        for t in self.threads:
+            self.threads[t].kill = True
+            self.threads[t].join()
         for gallery in self.galleries:
             gallery.__del__()
         self.quit()
@@ -258,7 +262,10 @@ class Program(QtGui.QApplication, Logger):
         self.main_window.inc_progress(val)
 
     def thread_exception_handler(self, id, exception):
-        self.threads.pop(id)
+        try:
+            self.threads.pop(id)
+        except KeyError:
+            pass
         self.error_window.exception_hook(*exception)
 
 if __name__ == "__main__":

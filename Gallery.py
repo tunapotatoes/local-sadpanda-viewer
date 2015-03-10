@@ -162,22 +162,32 @@ class Gallery(Logger):
         self.ctitle = self.customize_window.title
         self.crating = self.customize_window.rating
         if self.customize_window.url:
+            old_id = self.id
             try:
-                old_id = self.id
                 self.id = Gallery.process_ex_url(self.customize_window.url)
-                if self.id != old_id:
-                    self.force_metadata = True
-                    self.parent.app.get_metadata([self])
             except:
                 raise Exceptions.InvalidExUrl()
+            if self.id != old_id:
+                self.force_metadata = True
+                self.parent.app.get_metadata([self])
         self.customize_window.close()
         self.customize_window = None
-        self.update_qgallery()
         self.save_metadata()
+        self.update_qgallery()
 
     def load_metadata(self):
         metadata = io.open(self.metadata_file, "r", encoding="utf-8")
-        self.metadata = json.load(metadata)
+        self.logger.debug(self.name)
+        try:
+            self.metadata = json.load(metadata)
+        except ValueError as e:
+            e = str(e)
+            if "Extra data:" in e:
+                column = int(re.search(r"column\s(\d+)", e).groups()[0])
+                metadata.seek(0)
+                self.metadata = json.loads(metadata.read()[:column - 1])
+            else:
+                raise
 
     def update_metadata(self, new_metadata):
         self.logger.debug("Update metadata with %s" % new_metadata)
@@ -187,9 +197,10 @@ class Gallery(Logger):
 
     def save_metadata(self):
         self.metadata = self.clean_metadata(self.metadata)
-        metadata_file = open(self.metadata_file, "wb")
+        metadata_file = open(self.metadata_file, "r+b")
         metadata_file.write(json.dumps(self.metadata,
                                        ensure_ascii=False).encode("utf8"))
+        metadata_file.truncate()
         metadata_file.close()
 
     def generate_image_hash(self, source):
@@ -211,7 +222,7 @@ class Gallery(Logger):
                         for key in metadata}
         elif isinstance(metadata, list):
             metadata = [self.clean_metadata(val) for val in metadata]
-        elif isinstance(metadata, str):
+        elif isinstance(metadata, unicode):
             metadata = re.sub("&#039;", "'", metadata)
             metadata = re.sub("&quot;", "\"", metadata)
             metadata = re.sub("(&amp;)", "&", metadata)

@@ -7,16 +7,19 @@ import weakref
 import copy
 import scandir
 import os
+import zipfile
 import sys
 import math
 from decimal import Decimal
 import Gallery
+import Exceptions
 from RequestManager import RequestManager
 from Search import Search
 
 
 class BaseThread(threading.Thread, Logger):
     id = None
+    kill = False
 
     def __init__(self, parent, **kwargs):
         super(BaseThread, self).__init__()
@@ -38,7 +41,7 @@ class BaseThread(threading.Thread, Logger):
         try:
             self._run()
         except (KeyboardInterrupt, SystemExit):
-            raise
+            return
         except:
             self.basesignals.exception.emit(self.id, sys.exc_info())
 
@@ -66,6 +69,8 @@ class GalleryThread(BaseThread):
         archives = []
         for path in paths:
             for base_folder, folders, files in scandir.walk(path):
+                if self.kill:
+                    return
                 images = []
                 for f in files:
                     ext = os.path.splitext(f)[-1].lower()
@@ -81,7 +86,11 @@ class GalleryThread(BaseThread):
                                                   r[0], r[1])
                             for r in dirs if r[0] not in existing_paths]
         archive_galleries = []
+        bad_permissions = []
+        bad_files = []
         for r in archives:
+            if self.kill:
+                return
             if r in existing_paths:
                 continue
             try:
@@ -89,7 +98,13 @@ class GalleryThread(BaseThread):
                     Gallery.ArchiveGallery(self.parent.main_window, r))
             except AssertionError:
                 pass
+            except IOError:
+                bad_permissions.append(r)
+            except zipfile.BadZipFile:
+                bad_files.append(r)
         self.signals.end.emit(folder_galleries + archive_galleries)
+        if bad_permissions or bad_files:
+            raise Exceptions.InvalidZip(bad_permissions, bad_files)
 
 
 class ImageThread(BaseThread):
@@ -121,6 +136,8 @@ class ImageThread(BaseThread):
             return
         send_galleries = []
         for gallery in self.galleries:
+            if self.kill:
+                return
             if not gallery.C_QGallery:
                 if isinstance(gallery, Gallery.FolderGallery):
                     gallery.image = QtGui.QImage(gallery.files[0])
@@ -171,6 +188,8 @@ class SearchThread(BaseThread):
             self.inc_val = 0
         need_metadata_galleries = []
         for gallery in search_galleries:
+            if self.kill:
+                return
             search_results = Search.search_by_gallery(gallery)
             self.signals.progress.emit(self.inc_val)
             if search_results:
@@ -196,6 +215,8 @@ class SearchThread(BaseThread):
         response = RequestManager.post(self.API_URL, payload=payload)
         self.signals.progress.emit(self.inc_val)
         for gallery in galleries:
+            if self.kill:
+                return
             for metadata in response["gmetadata"]:
                 id = [metadata["gid"], metadata["token"]]
                 if id == gallery.id:
