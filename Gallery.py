@@ -2,6 +2,7 @@
 import os
 import hashlib
 import io
+import stat
 import json
 import re
 import shutil
@@ -15,7 +16,7 @@ import contextlib
 
 
 class Gallery(Logger):
-    IMAGE_EXTS = [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webm"]
+    IMAGE_EXTS = [".png", ".jpg", ".jpeg", ".gif", ".bmp"]
     HASH_SIZE = 8192
     BASE_EX_URL = "http://exhentai.org/g/%s/%s/"
     BUTTONS = ["editButton", "openButton"]
@@ -177,7 +178,6 @@ class Gallery(Logger):
 
     def load_metadata(self):
         metadata = io.open(self.metadata_file, "r", encoding="utf-8")
-        self.logger.debug(self.name)
         try:
             self.metadata = json.load(metadata)
         except ValueError as e:
@@ -197,7 +197,10 @@ class Gallery(Logger):
 
     def save_metadata(self):
         self.metadata = self.clean_metadata(self.metadata)
-        metadata_file = open(self.metadata_file, "r+b")
+        try:
+            metadata_file = open(self.metadata_file, "r+b")
+        except IOError:
+            metadata_file = open(self.metadata_file, "wb")
         metadata_file.write(json.dumps(self.metadata,
                                        ensure_ascii=False).encode("utf8"))
         metadata_file.truncate()
@@ -272,6 +275,8 @@ class ArchiveGallery(Gallery):
         except ValueError:
             self.update_metadata({})
         self.logger.info("Raw files: %s" % self.raw_files)
+        with self.archive_file("r") as archive:
+            archive.testzip()
 
     @property
     def path(self):

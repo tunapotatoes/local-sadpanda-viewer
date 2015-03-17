@@ -109,7 +109,7 @@ class GalleryThread(BaseThread):
 
 class ImageThread(BaseThread):
     IMAGE_WIDTH = 200
-    EMIT_FREQ = 25
+    EMIT_FREQ = 1
     id = "image"
 
     def __init__(self, parent, galleries, **kwargs):
@@ -135,6 +135,9 @@ class ImageThread(BaseThread):
         except ZeroDivisionError:
             return
         send_galleries = []
+        import time
+        start_time = time.time()
+        print start_time
         for gallery in self.galleries:
             if self.kill:
                 return
@@ -144,8 +147,11 @@ class ImageThread(BaseThread):
                 elif isinstance(gallery, Gallery.ArchiveGallery):
                     gallery.image = QtGui.QImage()
                     assert gallery.image.loadFromData(gallery.raw_image.read())
-                gallery.image = gallery.image.scaledToWidth(
-                    self.IMAGE_WIDTH, QtCore.Qt.SmoothTransformation)
+                # gallery.image = gallery.image.scaledToWidth(
+                #     self.IMAGE_WIDTH * 4).scaledToWidth(self.IMAGE_WIDTH,
+                #                                         QtCore.Qt.SmoothTransformation)
+                gallery.image = gallery.image.scaledToWidth(self.IMAGE_WIDTH,
+                                                        QtCore.Qt.SmoothTransformation)
                 send_galleries.append(gallery)
                 self.signals.progress.emit(inc_val)
                 if len(send_galleries) == self.EMIT_FREQ:
@@ -153,6 +159,10 @@ class ImageThread(BaseThread):
                     send_galleries = []
         if send_galleries:
             self.signals.gallery.emit(send_galleries)
+        end_time = time.time()
+        print end_time
+        print end_time - start_time
+        
 
 
 class SearchThread(BaseThread):

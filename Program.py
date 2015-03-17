@@ -25,8 +25,8 @@ class Program(QtGui.QApplication, Logger):
 
     def __init__(self, args):
         super(Program, self).__init__(args)
-        self.error_window = Windows.Popup(self)
         self.main_window = Windows.MainWindow(self)
+        self.error_window = Windows.Popup(self)
         self.galleries = []
         self.threads = {}
         self.config = {}

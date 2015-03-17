@@ -244,14 +244,15 @@ class Popup(QtGui.QMessageBox, Logger):
 
     def exception_hook(self, extype, exvalue, extraceback):
         fatal = True  # Default to true for unhandled exceptions
+        self.setWindowTitle("Error")
         if issubclass(extype, Exceptions.BaseException):
             fatal = exvalue.fatal
             self.setText(exvalue.msg)
+            if exvalue.details:
+                self.setDetailedText(exvalue.details)
         else:
             self.setText("An unhandled %s exception has occurred. The program will now shutdown." % str(extype))
             self.logger.error("An unhandled %s exception occured." % str(extype))
-        #  self.logger.error(traceback.print_tb(extraceback))
-        #self.logger.error("".join(traceback.format_tb(extraceback)))
         self.logger.error("Exception details: ",
                           exc_info=(extype, exvalue, extraceback))
         self.show()
