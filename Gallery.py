@@ -187,7 +187,7 @@ class Gallery(Logger):
                 metadata.seek(0)
                 self.metadata = json.loads(metadata.read()[:column - 1])
             else:
-                raise
+                self.save_metadata() # Wipes current file
 
     def update_metadata(self, new_metadata):
         self.logger.debug("Update metadata with %s" % new_metadata)
