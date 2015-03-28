@@ -254,7 +254,11 @@ class FolderGallery(Gallery):
         if not os.path.exists(self.metadata_file):
             self.update_metadata({})
         else:
-            self.load_metadata()
+            try:
+                self.load_metadata()
+            except ValueError:
+                self.logger.error("Metadata file does not contain valid json, overwriting.")
+                self.update_metadata({})
 
     def generate_image_hash(self):
         with open(self.files[0], "rb") as image:

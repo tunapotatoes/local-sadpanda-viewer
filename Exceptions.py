@@ -39,11 +39,14 @@ class InvalidRatingSearch(BaseException):
 class InvalidZip(BaseException):
     bad_perm_msg = "The following zip files have incorrect permissions.\nPlease ensure everyone has write access to them.\n%s"
     bad_file_msg = "The following files failed to open as a valid zip file.\n%s"
+    unsupported_msg = "The following zip files were compressed with an unsupported method.\n%s"
     msg = "Some zipfiles failed to open properly. Please look at the details below."
 
-    def __init__(self, invalid_permissions=None, invalid_files=None):
+    def __init__(self, invalid_permissions=None, invalid_files=None, unsupported_files=None):
         if invalid_files:
             self.details += self.bad_file_msg % "\n".join(invalid_files)
         if invalid_permissions:
             self.details += self.bad_perm_msg % "\n".join(invalid_permissions)
+        if unsupported_files:
+            self.details += self.unsupported_msg % "\n".join(unsupported_files)
         super(InvalidZip, self).__init__()

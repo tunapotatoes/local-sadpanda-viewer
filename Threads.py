@@ -86,8 +86,9 @@ class GalleryThread(BaseThread):
                                                   r[0], r[1])
                             for r in dirs if r[0] not in existing_paths]
         archive_galleries = []
-        bad_permissions = []
-        bad_files = []
+        invalid_permissions = []
+        invalid_files = []
+        unsupported_files = []
         for r in archives:
             if self.kill:
                 return
@@ -99,12 +100,16 @@ class GalleryThread(BaseThread):
             except AssertionError:
                 pass
             except IOError:
-                bad_permissions.append(r)
+                invalid_permissions.append(r)
             except zipfile.BadZipfile:
-                bad_files.append(r)
+                invalid_files.append(r)
+            except NotImplementedError:
+                unsupported_files.append(r)
+            except:
+                invalid_files.append(r)
         self.signals.end.emit(folder_galleries + archive_galleries)
-        if bad_permissions or bad_files:
-            raise Exceptions.InvalidZip(bad_permissions, bad_files)
+        if any([invalid_permissions, invalid_files, unsupported_files]):
+            raise Exceptions.InvalidZip(invalid_permissions, invalid_files, unsupported_files)
 
 
 class ImageThread(BaseThread):
@@ -135,9 +140,6 @@ class ImageThread(BaseThread):
         except ZeroDivisionError:
             return
         send_galleries = []
-        import time
-        start_time = time.time()
-        print start_time
         for gallery in self.galleries:
             if self.kill:
                 return
@@ -159,10 +161,6 @@ class ImageThread(BaseThread):
                     send_galleries = []
         if send_galleries:
             self.signals.gallery.emit(send_galleries)
-        end_time = time.time()
-        print end_time
-        print end_time - start_time
-        
 
 
 class SearchThread(BaseThread):
