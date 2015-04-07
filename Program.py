@@ -19,6 +19,7 @@ import Exceptions
 
 class Program(QtGui.QApplication, Logger):
     PAGE_SIZE = 100
+    CONFIG_DIR = os.path.expanduser("~/.lsv")
     CONFIG_FILE = os.path.expanduser("~/.sadpanda.config2")
     DEFAULT_CONFIG = {"dirs": [], "cookies": {"ipb_member_id": "",
                                               "ipb_pass_hash": ""}}
@@ -101,7 +102,10 @@ class Program(QtGui.QApplication, Logger):
 
     def save_config(self):
         self.logger.debug("Saving config.")
-        config_file = open(self.CONFIG_FILE, "r+b")
+	try:
+            config_file = open(self.CONFIG_FILE, "r+b")
+    	except IOError:
+            config_file = open(self.CONFIG_FILE, "wb")
         config_file.write(json.dumps(self.config,
                                      ensure_ascii=False).encode("utf8"))
         config_file.truncate()
