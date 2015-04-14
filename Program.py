@@ -8,19 +8,19 @@ from ui.gallery import C_QGallery
 from RequestManager import RequestManager
 import sys
 import os
-import io
 import re
 import json
 import logging
 import Threads
 import Windows
 import Exceptions
+import Database
 
 
 class Program(QtGui.QApplication, Logger):
     PAGE_SIZE = 100
     CONFIG_DIR = os.path.expanduser("~/.lsv")
-    CONFIG_FILE = os.path.expanduser("~/.sadpanda.config2")
+    THUMB_DIR = os.path.join(CONFIG_DIR, "thumbs")
     DEFAULT_CONFIG = {"dirs": [], "cookies": {"ipb_member_id": "",
                                               "ipb_pass_hash": ""}}
 
@@ -32,13 +32,14 @@ class Program(QtGui.QApplication, Logger):
         self.threads = {}
         self.config = {}
         self.pages = [[]]
+        self.version = "ma.mi"
         self.page_number = 0
 
     def exec_(self):
-        if not os.path.exists(self.CONFIG_FILE):
-            self.update_config(config=self.DEFAULT_CONFIG)
-        else:
-            self.load_config()
+        if not os.path.exists(self.THUMB_DIR):
+            os.makedirs(self.THUMB_DIR)
+        Database.setup()
+        self.load_config()
         self.find_galleries()
         return super(Program, self).exec_()
 
@@ -79,14 +80,33 @@ class Program(QtGui.QApplication, Logger):
         return self.config["cookies"]
 
     def load_config(self):
-        config = io.open(self.CONFIG_FILE, "r", encoding="utf-8")
-        self.config = json.load(config)
-        self.logger.debug("Config loaded: %s" % self.config)
-        config.close()
+        self.logger.debug("Loading config from db.")
+        with Database.get_session(self) as session:
+            db_config = session.query(Database.Config)
+            if db_config.count() == 0:
+                self.config = self.DEFAULT_CONFIG
+                new_config = Database.Config()
+                new_config.json = json.dumps(self.config)
+                new_config.version = self.version
+                session.add(new_config)
+                session.commit()
+            else:
+                assert db_config.count() == 1
+                db_config = db_config[0]
+                self.config = json.loads(db_config.json)
+                self.version = db_config.version
         RequestManager.COOKIES = self.config["cookies"]
         self.main_window.member_id = self.member_id
         self.main_window.pass_hash = self.pass_hash
         self.main_window.dirs = self.dirs
+
+    def save_config(self):
+        self.logger.debug("Save config to db.")
+        with Database.get_session(self) as session:
+            db_config = session.query(Database.Config)[0]
+            db_config.json = json.dumps(self.config, ensure_ascii=False).encode("utf8")
+            db_config.version = self.version
+            session.add(db_config)
 
     def update_config(self, **kwargs):
         new_config = kwargs.get("config", {})
@@ -99,17 +119,6 @@ class Program(QtGui.QApplication, Logger):
             self.pass_hash = self.main_window.pass_hash
         RequestManager.COOKIES = self.cookies
         self.save_config()
-
-    def save_config(self):
-        self.logger.debug("Saving config.")
-	try:
-            config_file = open(self.CONFIG_FILE, "r+b")
-    	except IOError:
-            config_file = open(self.CONFIG_FILE, "wb")
-        config_file.write(json.dumps(self.config,
-                                     ensure_ascii=False).encode("utf8"))
-        config_file.truncate()
-        config_file.close()
 
     def process_search(self, search_text):
         search_text = search_text.lower()
@@ -162,13 +171,18 @@ class Program(QtGui.QApplication, Logger):
             self.setup_pages(galleries)
             self.show_page()
 
-    def in_search(self, tags, title, input_tag):
+    @staticmethod
+    def in_search(tags, title, input_tag):
         if input_tag in title:
             return True
         for tag in tags:
             if input_tag in tag:
                 return True
         return False
+
+    def setup_threads(self):
+        self.threads = {}
+        self.threads
 
     def find_galleries(self):
         self.main_window.disable_all_buttons()

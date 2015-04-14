@@ -11,8 +11,9 @@ import zipfile
 import sys
 import math
 from decimal import Decimal
-import Gallery
+from Gallery import Gallery, FolderGallery, ArchiveGallery
 import Exceptions
+import Database
 from RequestManager import RequestManager
 from Search import Search
 
@@ -23,6 +24,7 @@ class BaseThread(threading.Thread, Logger):
 
     def __init__(self, parent, **kwargs):
         super(BaseThread, self).__init__()
+        self.daemon = True
         self._parent = weakref.ref(parent)
         self.basesignals = self.BaseSignals()
         self.basesignals.exception.connect(self.parent.thread_exception_handler)
@@ -47,8 +49,6 @@ class BaseThread(threading.Thread, Logger):
 
 
 class GalleryThread(BaseThread):
-    IMAGE_EXTS = [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webm"]
-    ARCHIVE_EXTS = [".zip"]
     id = "gallery"
 
     def __init__(self, parent, **kwargs):
@@ -63,10 +63,41 @@ class GalleryThread(BaseThread):
         self.find_galleries()
 
     def find_galleries(self):
+        folder_galleries = []
+        folder_gallery_candidates = []
+        archive_galleries = []
+        archive_gallery_candidates = []
+
+        invalid_permissions = []
+        invalid_files = []
+        unsupported_files = []
+
+        existing_paths = [g.path for g in self.parent.galleries]
+
+        with Database.get_session(self) as session:
+            db_galleries = session.query(Database.Gallery)
+            db_gallery_list = [g for g in db_galleries]
+            for db_gallery in db_gallery_list:
+                if self.kill:
+                    return
+                if db_gallery.dead:
+                    continue
+                if db_gallery.path in existing_paths:
+                    continue
+                if not os.path.exists(db_gallery.path):
+                    db_gallery.dead = True
+                    session.add(db_gallery)
+                    continue
+                if db_gallery.type == Gallery.TypeMap.FolderGallery:
+                    folder_gallery_candidates.append({"path": db_gallery.path,
+                                                      "parent": self.parent.main_window,
+                                                      "db_id": db_gallery.id})
+                elif db_gallery.type == Gallery.TypeMap.ArchiveGallery:
+                    archive_gallery_candidates.append({"path": db_gallery.path,
+                                                       "parent": self.parent.main_window,
+                                                       "db_id": db_gallery.id})
         paths = map(os.path.normpath, map(os.path.expanduser,
                                           self.parent.dirs))
-        dirs = []
-        archives = []
         for path in paths:
             for base_folder, folders, files in scandir.walk(path):
                 if self.kill:
@@ -74,41 +105,46 @@ class GalleryThread(BaseThread):
                 images = []
                 for f in files:
                     ext = os.path.splitext(f)[-1].lower()
-                    if ext in self.IMAGE_EXTS:
+                    if ext in Gallery.IMAGE_EXTS:
                         images.append(os.path.join(base_folder, f))
-                    elif ext in self.ARCHIVE_EXTS:
-                        archives.append(os.path.join(base_folder, f))
+                    elif ext in ArchiveGallery.ARCHIVE_EXTS:
+                        archive_file = os.path.join(base_folder, f)
+                        archive_gallery_candidates.append({"path": archive_file,
+                                                           "parent": self.parent.main_window})
                 if images:
-                    dirs.append((base_folder,
-                                 sorted(images, key=lambda f: f.lower())))
-        existing_paths = [g.path for g in self.parent.galleries]
-        folder_galleries = [Gallery.FolderGallery(self.parent.main_window,
-                                                  r[0], r[1])
-                            for r in dirs if r[0] not in existing_paths]
-        archive_galleries = []
-        invalid_permissions = []
-        invalid_files = []
-        unsupported_files = []
-        for r in archives:
+                    folder_gallery_candidates.append({"path": base_folder,
+                                                      "parent": self.parent.main_window,
+                                                      "files": sorted(images, key=lambda f: f.lower())})
+        gallery_candidates = folder_gallery_candidates + archive_gallery_candidates
+        for gallery in gallery_candidates:
             if self.kill:
                 return
-            if r in existing_paths:
+            if gallery.get("path") in existing_paths:
                 continue
+            existing_paths.append(gallery.get("path"))
             try:
-                archive_galleries.append(
-                    Gallery.ArchiveGallery(self.parent.main_window, r))
+                if gallery in archive_gallery_candidates:
+                    try:
+                        gallery_obj = ArchiveGallery(**gallery)
+                        archive_galleries.append(gallery_obj)
+                    except IOError:
+                        archive_galleries.remove(gallery_obj)
+                        invalid_permissions.append(gallery.get("path"))
+                    except zipfile.BadZipfile:
+                        archive_galleries.remove(gallery_obj)
+                        invalid_files.append(gallery.get("path"))
+                    except NotImplementedError:
+                        archive_galleries.remove(gallery_obj)
+                        unsupported_files.append(gallery.get("path"))
+                else:
+                    folder_galleries.append(FolderGallery(**gallery))
             except AssertionError:
                 pass
-            except IOError:
-                invalid_permissions.append(r)
-            except zipfile.BadZipfile:
-                invalid_files.append(r)
-            except NotImplementedError:
-                unsupported_files.append(r)
             except:
-                invalid_files.append(r)
+                exc = sys.exc_info()
+                self.logger.error("%s gallery got unhandled exception" % gallery, exc_info=exc)
         self.signals.end.emit(folder_galleries + archive_galleries)
-        if any([invalid_permissions, invalid_files, unsupported_files]):
+        if invalid_permissions or invalid_files or unsupported_files:
             raise Exceptions.InvalidZip(invalid_permissions, invalid_files, unsupported_files)
 
 
@@ -144,16 +180,7 @@ class ImageThread(BaseThread):
             if self.kill:
                 return
             if not gallery.C_QGallery:
-                if isinstance(gallery, Gallery.FolderGallery):
-                    gallery.image = QtGui.QImage(gallery.files[0])
-                elif isinstance(gallery, Gallery.ArchiveGallery):
-                    gallery.image = QtGui.QImage()
-                    assert gallery.image.loadFromData(gallery.raw_image.read())
-                # gallery.image = gallery.image.scaledToWidth(
-                #     self.IMAGE_WIDTH * 4).scaledToWidth(self.IMAGE_WIDTH,
-                #                                         QtCore.Qt.SmoothTransformation)
-                gallery.image = gallery.image.scaledToWidth(self.IMAGE_WIDTH,
-                                                        QtCore.Qt.SmoothTransformation)
+                gallery.load_thumbnail()
                 send_galleries.append(gallery)
                 self.signals.progress.emit(inc_val)
                 if len(send_galleries) == self.EMIT_FREQ:
@@ -168,6 +195,7 @@ class SearchThread(BaseThread):
     BASE_REQUEST = {"method": "gdata", "gidlist": []}
     API_MAX_ENTRIES = 25
     id = "metadata"
+    inc_val = 0
 
     def __init__(self, parent, **kwargs):
         super(SearchThread, self).__init__(parent)
@@ -186,14 +214,13 @@ class SearchThread(BaseThread):
     def search(self):
         search_galleries = [g for g in self.galleries if
                             g.gid is None]
-        self.logger.debug("Search galleries: %s" % [g.name
-                                                    for g in search_galleries])
+        self.logger.debug("Search galleries: %s" % [g.name for g in search_galleries])
         try:
             self.inc_val = (Decimal(100.0) /
                             Decimal(len(search_galleries) +
                                     math.ceil(len(search_galleries) / 25)))
         except ZeroDivisionError:
-            self.inc_val = 0
+            pass
         need_metadata_galleries = []
         for gallery in search_galleries:
             if self.kill:
@@ -211,8 +238,7 @@ class SearchThread(BaseThread):
             self.get_metadata(need_metadata_galleries)
         galleries = [g for g in self.galleries if g.force_metadata]
         gallery_metalist = [galleries[i:i + self.API_MAX_ENTRIES]
-                            for i in range(0, len(galleries),
-                                           self.API_MAX_ENTRIES)]
+                            for i in range(0, len(galleries), self.API_MAX_ENTRIES)]
         [self.get_metadata(g) for g in gallery_metalist]
         self.signals.end.emit()
 
