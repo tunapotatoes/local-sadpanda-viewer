@@ -4,6 +4,7 @@ from Logger import Logger
 
 class BaseException(Exception, Logger):
     fatal = False
+    thread_restart = False
     details = ""
 
     def __init__(self):
@@ -15,12 +16,14 @@ class BaseException(Exception, Logger):
 class BadCredentialsError(BaseException):
     "Raised for incorrect/missing credentials"
 
+    thread_restart = True
     msg = "Your user id/password hash combination is incorrect."
 
 
 class UserBannedError(BaseException):
     "Raised when user is banned on EX"
 
+    thread_restart = True
     msg = "You are currently banned on EX."
 
 

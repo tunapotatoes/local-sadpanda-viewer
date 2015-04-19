@@ -6,6 +6,7 @@ from time import strftime
 from Logger import Logger
 from ui.gallery import C_QGallery
 from RequestManager import RequestManager
+from operator import attrgetter
 import sys
 import os
 import re
@@ -26,20 +27,22 @@ class Program(QtGui.QApplication, Logger):
 
     def __init__(self, args):
         super(Program, self).__init__(args)
-        self.main_window = Windows.MainWindow(self)
-        self.error_window = Windows.Popup(self)
+        self.tags = ["test"]
         self.galleries = []
         self.threads = {}
         self.config = {}
         self.pages = [[]]
         self.version = "ma.mi"
         self.page_number = 0
+        self.main_window = Windows.MainWindow(self)
+        self.error_window = Windows.Popup(self)
 
     def exec_(self):
         if not os.path.exists(self.THUMB_DIR):
             os.makedirs(self.THUMB_DIR)
         Database.setup()
         self.load_config()
+        self.setup_threads()
         self.find_galleries()
         return super(Program, self).exec_()
 
@@ -129,7 +132,7 @@ class Program(QtGui.QApplication, Logger):
             if rating[0] == "=" and rating[1] != "=":
                 rating = "=" + rating
             try:
-                eval("0" + rating)
+                eval("0.0" + rating)
             except:
                 raise Exceptions.InvalidRatingSearch()
         filter_words = re.findall(r"[\"]?[\-][\"]?([\w]*)[\"]?",
@@ -181,35 +184,45 @@ class Program(QtGui.QApplication, Logger):
         return False
 
     def setup_threads(self):
-        self.threads = {}
-        self.threads
+        self.threads["gallery"] = Threads.GalleryThread(self)
+        self.threads["gallery"].start()
+        self.threads["image"] = Threads.ImageThread(self)
+        self.threads["image"].start()
+        self.threads["metadata"] = Threads.SearchThread(self)
+        self.threads["metadata"].start()
+
+    def setup_tags(self):
+        tags = []
+        for gallery in self.galleries:
+            tags += list(map(lambda x: x.replace(" ", "_").lower(), gallery.tags))
+        self.tags = list(set(tags))
+        self.tags += list(map(lambda x: "-" + x, self.tags))
+        self.main_window.update_completer()
 
     def find_galleries(self):
         self.main_window.disable_all_buttons()
-        self.logger.debug("Starting gallery thread.")
-        assert not self.threads.get("gallery")
-        self.threads["gallery"] = Threads.GalleryThread(self)
-        self.threads["gallery"].start()
+        self.logger.debug("Sending start signal to gallery thread")
+        self.threads["gallery"].queue.put(None)
 
     def find_galleries_done(self, galleries):
         self.main_window.enable_all_buttons()
+        for gallery in galleries:
+            gallery.C_QGallery = C_QGallery(self.main_window, gallery)
         self.galleries += galleries
-        self.logger.debug("Gallery thread done.")
-        self.threads.pop("gallery")
+        self.logger.debug("Gallery thread done")
+        self.setup_tags()
+        self.sort()
         self.setup_pages()
         self.show_page()
 
     def show_page(self):
-        show_galleries = []
         need_images = []
         for gallery in self.current_page:
-            if not gallery.C_QGallery:
+            if not gallery.image:
                 need_images.append(gallery)
-            else:
-                show_galleries.append(gallery)
         self.logger.info("Need images: %s" % [g.name for g in need_images])
         self.generate_images(need_images)
-        self.main_window.show_galleries(show_galleries)
+        self.main_window.show_galleries(self.current_page)
 
     def hide_page(self):
         self.main_window.hide_galleries(self.current_page)
@@ -218,47 +231,47 @@ class Program(QtGui.QApplication, Logger):
         self.main_window.button_lock = True
         self.main_window.disable_all_buttons()
         self.logger.debug("Starting image thread.")
-        assert not self.threads.get("image")
-        self.threads["image"] = Threads.ImageThread(self, galleries)
-        self.threads["image"].start()
+        self.threads["image"].queue.put(galleries)
 
     def image_generated(self, galleries):
         for gallery in galleries:
-            gallery.C_QGallery = C_QGallery(self.main_window, gallery)
-        self.main_window.show_galleries(galleries)
+            gallery.C_QGallery.set_image()
+        #     gallery.C_QGallery = C_QGallery(self.main_window, gallery)
 
     def image_thread_done(self):
         self.main_window.button_lock = False
         self.main_window.enable_all_buttons()
         self.logger.debug("Image thread done.")
-        self.threads.pop("image")
         self.main_window.clear_progress_bar()
 
     def get_metadata(self, galleries=None):
-        self.logger.debug("Starting metadata thread.")
-        assert not self.threads.get("metadata")
+        galleries = galleries or self.galleries
+        self.logger.debug("Starting metadata thread")
         self.main_window.disable_buttons(
             ["refreshButton", "submitButton", "cancelButton"])
-        self.threads["metadata"] = Threads.SearchThread(self,
-                                                        galleries=galleries)
-        self.threads["metadata"].start()
+        self.threads["metadata"].queue.put(galleries)
 
     def get_metadata_done(self):
         self.logger.debug("Metadata thread done.")
-        self.threads.pop("metadata")
+        self.setup_tags()
         self.main_window.clear_progress_bar()
         self.main_window.enable_all_buttons()
         [g.update_qgallery() for g in self.galleries]
 
     def close(self):
-        for t in self.threads:
-            self.threads[t].kill = True
-            self.threads[t].join()
+        # for t in self.threads:
+        #     if not self.threads[t].daemon:
+        #         self.threads[t].kill = True
+        #         self.threads[t].join()
         for gallery in self.galleries:
             gallery.__del__()
         self.quit()
 
-    def switch_page(self):
+    def sort(self):
+        key = lambda x: getattr(x, "true_name").lower()
+        self.galleries.sort(key=key, reverse=False)
+
+    def switch_page(self, *args):
         if self.main_window.page_number in [-1, self.page_number]:
             return
         self.main_window.reset_scrollbar()
@@ -279,12 +292,9 @@ class Program(QtGui.QApplication, Logger):
     def inc_progress(self, val):
         self.main_window.inc_progress(val)
 
-    def thread_exception_handler(self, id, exception):
-        try:
-            self.threads.pop(id)
-        except KeyError:
-            pass
+    def thread_exception_handler(self, thread, exception):
         self.error_window.exception_hook(*exception)
+
 
 if __name__ == "__main__":
     reload(sys)

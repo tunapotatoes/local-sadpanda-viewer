@@ -32,7 +32,15 @@ class Ui_MainWindow(object):
 "border: 1px solid black;\n"
 "background: #34353b;\n"
 "min-height: 19;\n"
-"}")
+"}"
+"QMenu {\n"
+"background: #4f535b;\n"
+"background: #34353b;\n"
+"border:  1px solid black;\n"
+"color: #F1F1F1;\n"
+"\n"
+"}"
+"QMenu::item::selected { background-color: #43464e}")
         self.centralwidget = QtGui.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
         self.gridLayout = QtGui.QGridLayout(self.centralwidget)
@@ -61,7 +69,6 @@ class Ui_MainWindow(object):
 "\n"
 "background: #43464e;\n"
 "border: 1px solid #34353b;\n"
-"border-radius: 9px;\n"
 "\n"
 "}\n"
 "\n"
@@ -291,6 +298,7 @@ class Ui_MainWindow(object):
         sizePolicy.setHeightForWidth(self.galleryBox.sizePolicy().hasHeightForWidth())
         self.galleryBox.setSizePolicy(sizePolicy)
         self.galleryBox.setObjectName("galleryBox")
+        self.galleryBox.setChecked(True)
         self.verticalLayout_2.addWidget(self.galleryBox)
         self.metaBox = QtGui.QRadioButton(self.frame_3)
         sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Fixed)
@@ -493,7 +501,6 @@ class Ui_MainWindow(object):
 "\n"
 "background: #43464e;\n"
 "border: 1px solid #34353b;\n"
-"border-radius: 9px;\n"
 "\n"
 "}\n"
 "\n"

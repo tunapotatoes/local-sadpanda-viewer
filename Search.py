@@ -15,6 +15,8 @@ class Search(Logger):
         cls = cls()
         cls.logger.debug("Cleaning name.\nInput name: %s" % name)
         banned_chars = ["=", "-", ":", "|", "~", "+", "]", "[", ".", ",", ")", "("]
+
+        # Don't remember what these regex do, was probably drunk when I made them
         name = re.sub(r"\{[^}]*\}", " ", name)
         name = re.sub(r"[\w]*[\-][\w]*", " ", name)
         for char in banned_chars:

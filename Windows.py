@@ -36,6 +36,7 @@ class MainWindow(Logger, QtGui.QMainWindow):
         self.ui.nextButton.clicked.connect(self.next_page)
         self.ui.prevButton.clicked.connect(self.prev_page)
         self.ui.directories.clicked.connect(self.browse)
+        self.update_completer()
         position = self.frameGeometry()
         position.moveCenter(
             QtGui.QDesktopWidget().availableGeometry().center())
@@ -45,6 +46,12 @@ class MainWindow(Logger, QtGui.QMainWindow):
 
     def closeEvent(self, event=None):
         self.app.close()
+
+    def update_completer(self):
+        self.completer = QtGui.QCompleter(self.app.tags)
+        self.completer.setCaseSensitivity(QtCore.Qt.CaseInsensitive)
+        self.completer.setCompletionRole(QtCore.Qt.DisplayRole)
+        self.ui.searchLine.setCompleter(self.completer)
 
     def refresh_button_handler(self):
         if self.ui.galleryBox.isChecked():
@@ -131,7 +138,6 @@ class MainWindow(Logger, QtGui.QMainWindow):
     def show_galleries(self, galleries):
         for gallery in galleries:
             assert gallery in self.app.current_page
-            self.logger.debug("Showing %s gallery" % gallery.title)
             self.ui.flowLayout.addWidget(gallery.C_QGallery)
             gallery.C_QGallery.show()
         self.ui.flowLayout.update()
@@ -139,7 +145,6 @@ class MainWindow(Logger, QtGui.QMainWindow):
     def hide_galleries(self, galleries):
         for gallery in galleries:
             assert gallery in self.app.current_page
-            self.logger.debug("Hiding %s gallery" % gallery.title)
             self.ui.flowLayout.removeWidget(gallery.C_QGallery)
             try:
                 gallery.C_QGallery.hide()
@@ -170,11 +175,6 @@ class MainWindow(Logger, QtGui.QMainWindow):
             self.directories = browser.selectedFiles
             for directory in browser.selectedFiles:
                 self.ui.directories.append(directory)
-
-    def get_metadata(self):
-        self.disable_buttons(["refreshButton", "submitButton", "cancelButton"])
-        self.app.get_metadata()
-        self.enable_all_buttons()
 
     def configure_combo_box(self):
         self.ui.pageBox.currentIndexChanged.connect(lambda x: None)

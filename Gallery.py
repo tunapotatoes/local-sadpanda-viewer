@@ -10,17 +10,18 @@ import Windows
 import Exceptions
 import zipfile
 import tempfile
-import copy
 import Database
 import sys
 import contextlib
 import scandir
 from Boilerplate import GalleryBoilerplate
+from ui.gallery import C_QGallery
 from PySide import QtGui, QtCore
-
+from time import time
+from datetime import datetime
 
 class Gallery(GalleryBoilerplate):
-    IMAGE_EXTS = [".png", ".jpg", ".jpeg", ".gif", ".bmp"]
+    IMAGE_EXTS = [".png", ".jpg", ".jpeg"]
     HASH_SIZE = 8192
     IMAGE_WIDTH = 200
     BASE_EX_URL = "http://exhentai.org/g/%s/%s/"
@@ -37,6 +38,9 @@ class Gallery(GalleryBoilerplate):
     db_id = None
     db_uuid = None
     name = None
+    read_count = 0
+    last_read = None
+    files = None
 
     class TypeMap(object):
         FolderGallery = 0
@@ -62,6 +66,15 @@ class Gallery(GalleryBoilerplate):
     def __del__(self):
         self.C_QGallery = None
 
+    @property
+    def true_name(self):
+        name = self.title
+        pairs = [("{", "}"), ("(", ")"), ("[", "]")]
+        regex = ur"\s*\%s[^%s]*\%s"
+        for pair in pairs:
+            name = re.sub(regex % (pair[0], pair[0], pair[1]), "",  name)
+        return name.lstrip()
+
     def customize(self):
         self.customize_window = Windows.CustomizeWindow(self.parent, self)
         self.customize_window.tags = ", ".join(self.ctags)
@@ -83,9 +96,10 @@ class Gallery(GalleryBoilerplate):
                 raise Exceptions.InvalidExUrl()
             if self.id != old_id:
                 self.force_metadata = True
-                self.parent.app.get_metadata([self])
+                self.get_metadata()
         self.customize_window.close()
         self.customize_window = None
+        self.parent.app.setup_tags()
         self.save_metadata()
         self.update_qgallery()
 
@@ -128,6 +142,8 @@ class Gallery(GalleryBoilerplate):
             self.thumbnail_path = db_gallery.thumbnail_path
             self.image_hash = db_gallery.image_hash
             self.db_uuid = db_gallery.uuid
+            self.read_count = db_gallery.read_count
+            self.last_read = db_gallery.last_read
             if isinstance(self, ArchiveGallery):
                 self.archive_file = db_gallery.path
                 self.path = os.path.dirname(self.archive_file)
@@ -137,7 +153,6 @@ class Gallery(GalleryBoilerplate):
                 self.metadata[metadata.name] = json.loads(metadata.json)
 
     def update_metadata(self, new_metadata):
-        self.logger.debug("Update metadata with %s" % new_metadata)
         self.metadata.update(new_metadata)
         self.force_metadata = False
         self.save_metadata()
@@ -163,6 +178,8 @@ class Gallery(GalleryBoilerplate):
                 session.commit()  # Have to run this on each iteration in case a new metadata table was created
             db_gallery.thumbnail_path = self.thumbnail_path
             db_gallery.image_hash = self.image_hash
+            db_gallery.read_count = self.read_count
+            db_gallery.last_read = self.last_read
             if isinstance(self, ArchiveGallery):
                 db_gallery.path = self.archive_file
             else:
@@ -267,11 +284,33 @@ class Gallery(GalleryBoilerplate):
         if not self.thumbnail_path or not os.path.exists(self.thumbnail_path) or not self.verify_hash():
             self.thumbnail_path = os.path.join(self.parent.app.THUMB_DIR, str(uuid.uuid1()))
             self.image = self.resize_image()
+            self.logger.debug("Saving new thumbnail")
             assert self.image.save(self.thumbnail_path, "JPG")
             self.image_hash = self.generate_image_hash()
             self.save_metadata()
         else:
             self.image = QtGui.QImage(self.thumbnail_path)
+
+    def open_file(self):
+        self.read_count += 1
+        self.last_read = int(time())
+        self.save_metadata()
+        self.update_qgallery()
+        QtGui.QDesktopServices.openUrl(QtCore.QUrl.fromLocalFile(self.files[0]))
+
+    def open_on_ex(self):
+        QtGui.QDesktopServices.openUrl(self.generate_ex_url())
+
+    def open_folder(self):
+        QtGui.QDesktopServices.openUrl(QtCore.QUrl.fromLocalFile(self.path))
+
+    def get_metadata(self):
+        self.parent.app.get_metadata([self])
+
+    @property
+    def local_last_read_time(self):
+        if self.last_read:
+            return datetime.fromtimestamp(self.last_read).strftime("%Y-%m-%d")
 
 
 
@@ -286,7 +325,16 @@ class FolderGallery(Gallery):
         self.files = list(map(os.path.normpath, files))
 
     def get_image(self):
-        return QtGui.QImage(self.files[0])
+        image = QtGui.QImageReader()
+        image.setDecideFormatFromContent(True)
+        image.setFileName(self.files[0])
+        image = image.read()
+        try:
+            assert image.width()
+        except:
+            import pdb
+            pdb.set_trace()
+        return image
 
     def generate_image_hash(self):
         with open(self.files[0], "rb") as image:

@@ -3,6 +3,14 @@
 import os
 from PySide import QtCore, QtGui
 
+class C_QLabel(QtGui.QLabel):
+    clicked = QtCore.Signal()
+
+    def mousePressEvent(self, event):
+        if event.button() == QtCore.Qt.LeftButton:
+            self.clicked.emit()
+        else:
+            super(C_QLabel, self).mousePressEvent(event)
 
 class C_QScrollArea(QtGui.QScrollArea):
     def keyPressEvent(self, event):

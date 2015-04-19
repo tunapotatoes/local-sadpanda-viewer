@@ -1,5 +1,6 @@
 #!/usr/bin/python2
 from PySide import QtCore, QtGui
+import ui.misc
 import weakref
 
 """
@@ -10,6 +11,7 @@ This shit is why I don't do Qt from hand.
 class C_QGallery(QtGui.QFrame):
     def __init__(self, parent=None, gallery=None, **kwargs):
         super(C_QGallery, self).__init__()
+        self.parent = parent
         self.gridLayout_2 = QtGui.QGridLayout()
         self.gridLayout_2.setObjectName("gridLayout_2")
         self.verticalLayout = QtGui.QVBoxLayout()
@@ -32,7 +34,7 @@ class C_QGallery(QtGui.QFrame):
         self.horizontalLayout_4.setObjectName("horizontalLayout_4")
         spacerItem1 = QtGui.QSpacerItem(40, 20, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
         self.horizontalLayout_4.addItem(spacerItem1)
-        self.image = QtGui.QLabel()
+        self.image = ui.misc.C_QLabel()
         self.image.setObjectName("image")
         self.horizontalLayout_4.addWidget(self.image)
         spacerItem2 = QtGui.QSpacerItem(40, 20, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
@@ -84,12 +86,11 @@ class C_QGallery(QtGui.QFrame):
         self.retranslateUi()
         # My manual stuff:
         #self.setContentsMargins(9, 9, 9, 9)
+        self.gallery = gallery
         self.setLayout(self.gridLayout_2)
-        self._gallery = weakref.ref(gallery)
-        self.openButton.clicked.connect(self.openFile)
+        self.openButton.clicked.connect(self.gallery.open_file)
         self.editButton.clicked.connect(self.gallery.customize)
-        self.image.setPixmap(QtGui.QPixmap().fromImage(self.gallery.image))
-        self.gallery.image = None
+        self.image.clicked.connect(self.gallery.open_file)
         self.update()
         self.setFixedSize(250, 400)
         #self.hide()
@@ -103,6 +104,35 @@ class C_QGallery(QtGui.QFrame):
     def gallery(self):
         return self._gallery()
 
+    @gallery.setter
+    def gallery(self, val):
+        self._gallery = weakref.ref(val)
+
+    def set_image(self):
+        self.image.setPixmap(QtGui.QPixmap().fromImage(self.gallery.image))
+        self.gallery.image = None
+
+    def contextMenuEvent(self, *args, **kwargs):
+        menu = QtGui.QMenu(self.parent)
+        open_action = QtGui.QAction("Open", self)
+        open_action.triggered.connect(self.gallery.open_file)
+        menu.addAction(open_action)
+        edit_action = QtGui.QAction("Edit", self)
+        edit_action.triggered.connect(self.gallery.customize)
+        menu.addAction(edit_action)
+        view_in_folder_action = QtGui.QAction("View folder", self)
+        view_in_folder_action.triggered.connect(self.gallery.open_folder)
+        menu.addAction(view_in_folder_action)
+        if self.gallery.gid:
+            open_on_ex_action = QtGui.QAction("View on EX", self)
+            open_on_ex_action.triggered.connect(self.gallery.open_on_ex)
+            menu.addAction(open_on_ex_action)
+        else:
+            search_action = QtGui.QAction("Search for metadata", self)
+            search_action.triggered.connect(self.gallery.get_metadata)
+            menu.addAction(search_action)
+        menu.popup(QtGui.QCursor.pos())
+
     def retranslateUi(self):
         # Not planning on translating shit so I'll probably just ax this later
         self.title.setText(QtGui.QApplication.translate("Form", "Title", None, QtGui.QApplication.UnicodeUTF8))
@@ -111,14 +141,15 @@ class C_QGallery(QtGui.QFrame):
         self.openButton.setText(QtGui.QApplication.translate("Form", "Open", None, QtGui.QApplication.UnicodeUTF8))
         self.setProperty("class", QtGui.QApplication.translate("Form", "sidebarFrame", None, QtGui.QApplication.UnicodeUTF8))
 
-    def openFile(self):
-        QtGui.QDesktopServices.openUrl(QtCore.QUrl.fromLocalFile(
-            self.gallery.files[0]))
-
     def _setToolTip(self):
-        if self.gallery.tags:
-            tooltip = ", ".join(self.gallery.tags)
-            tooltip = "<p>" + tooltip + "</p>"
+        if self.gallery.read_count == 1:
+            tooltip = "Read %s time"
         else:
-            tooltip = "No tags found."
+            tooltip = "Read %s times"
+        tooltip = tooltip % self.gallery.read_count
+        if self.gallery.last_read:
+            tooltip += "<br/>Last read on %s" % self.gallery.local_last_read_time
+        if self.gallery.tags:
+            tooltip += "<br />Tags: " + ", ".join(self.gallery.tags)[:-2]
+        tooltip = "<p>" + tooltip + "</p>"
         self.setToolTip(tooltip)
