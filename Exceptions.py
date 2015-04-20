@@ -32,6 +32,11 @@ class InvalidExUrl(BaseException):
 
     msg = "The URL you entered is invalid.\nThe configurations will not be saved."
 
+class InvalidRating(BaseException):
+    "Raised when the user inputs a rating less than 0 or greater than 5"
+
+    msg= "Sorry, please enter a "
+
 
 class InvalidRatingSearch(BaseException):
     "Raised when an incorrect rating function is given to search"

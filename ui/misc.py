@@ -2,6 +2,77 @@
 
 import os
 from PySide import QtCore, QtGui
+import qtawesome as qta
+
+
+class C_QCompleter(QtGui.QCompleter):
+
+    def pathFromIndex(self, index):
+        path = super(C_QCompleter, self).pathFromIndex(index)
+        path_list = str((self.widget().text())).split(" ")
+        if len(path_list):
+            path = "%s %s" % (" ".join(path_list[:-1]), path)
+        return path.lstrip()
+
+    def splitPath(self, path):
+        return [str(path.split(" ")[-1])]
+
+
+class C_QStar(QtGui.QLabel):
+    COLOR = "#F1F1F1"
+    SIZE = 25
+    PXMSIZE = (SIZE, SIZE)
+    MAX_NUMBER = 5
+
+    def __init__(self, parent, number):
+        super(C_QStar, self).__init__()
+        self.parent = parent
+        self.number = number
+        self.setMouseTracking(True)
+
+    def enterEvent(self, event):
+        self.mouseMoveEvent(event)
+
+    def mouseMoveEvent(self, event):
+        position = self.validate_position()
+        if position:
+            self.parent.setup_rating(self.get_rating(position))
+
+    def validate_position(self):
+        cursor = QtGui.QCursor()
+        pos = cursor.pos()
+        rect = self.geometry()
+        relative_pos = self.mapFromGlobal(pos)
+        if self.underMouse():
+            return relative_pos
+
+    def get_rating(self, pos):
+        if pos.x() >= self.SIZE / 2:
+            return self.number
+        else:
+            return self.number - .5
+
+    def leaveEvent(self, event):
+        self.parent.setup_rating()
+
+    def mousePressEvent(self, event):
+        position = self.validate_position()
+        if position:
+            event.accept()
+            if event.button() == QtCore.Qt.LeftButton:
+                self.parent.gallery.set_rating(self.get_rating(position))
+            elif event.button() == QtCore.Qt.RightButton:
+                self.parent.gallery.set_rating("")
+
+    def set_full_star(self):
+        self.setPixmap(qta.icon("fa.star", color=self.COLOR).pixmap(*self.PXMSIZE))
+
+    def set_half_star(self):
+        self.setPixmap(qta.icon("fa.star-half-o", color=self.COLOR).pixmap(*self.PXMSIZE))
+
+    def set_empty_star(self):
+        self.setPixmap(qta.icon("fa.star-o", color=self.COLOR).pixmap(*self.PXMSIZE))
+
 
 class C_QLabel(QtGui.QLabel):
     clicked = QtCore.Signal()

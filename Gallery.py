@@ -25,7 +25,6 @@ class Gallery(GalleryBoilerplate):
     HASH_SIZE = 8192
     IMAGE_WIDTH = 200
     BASE_EX_URL = "http://exhentai.org/g/%s/%s/"
-    BUTTONS = ["editButton", "openButton"]
     DB_ID_FILENAME = ".dbid"
     thumbnail_path = None
     image_hash = None
@@ -74,6 +73,11 @@ class Gallery(GalleryBoilerplate):
         for pair in pairs:
             name = re.sub(regex % (pair[0], pair[0], pair[1]), "",  name)
         return name.lstrip()
+
+    def set_rating(self, rating):
+        self.crating = str(rating)
+        self.save_metadata()
+
 
     def customize(self):
         self.customize_window = Windows.CustomizeWindow(self.parent, self)
@@ -329,11 +333,7 @@ class FolderGallery(Gallery):
         image.setDecideFormatFromContent(True)
         image.setFileName(self.files[0])
         image = image.read()
-        try:
-            assert image.width()
-        except:
-            import pdb
-            pdb.set_trace()
+        assert image.width()
         return image
 
     def generate_image_hash(self):

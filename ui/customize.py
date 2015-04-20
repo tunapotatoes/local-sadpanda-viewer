@@ -41,7 +41,6 @@ class Ui_Dialog(object):
 "\n"
 "background: #43464e;\n"
 "border: 1px solid #34353b;\n"
-"border-radius: 9px;\n"
 "\n"
 "}\n"
 "\n"

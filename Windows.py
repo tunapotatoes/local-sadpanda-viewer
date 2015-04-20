@@ -5,10 +5,12 @@ from PySide import QtCore, QtGui
 from Logger import Logger
 from ui.main_window import Ui_MainWindow
 from ui.flow import FlowLayout
-from ui.misc import C_QFileDialog
+from ui.misc import C_QFileDialog, C_QCompleter
 from ui.customize import Ui_Dialog
 import weakref
+import traceback
 import Exceptions
+import qtawesome as qta
 
 
 class MainWindow(Logger, QtGui.QMainWindow):
@@ -17,7 +19,6 @@ class MainWindow(Logger, QtGui.QMainWindow):
                "refreshButton",
                "submitButton",
                "cancelButton",
-               "searchLine",
                "nextButton",
                "prevButton",
                "pageBox"]
@@ -36,6 +37,12 @@ class MainWindow(Logger, QtGui.QMainWindow):
         self.ui.nextButton.clicked.connect(self.next_page)
         self.ui.prevButton.clicked.connect(self.prev_page)
         self.ui.directories.clicked.connect(self.browse)
+        self.ui.searchButton.setText("")
+        self.ui.searchButton.setIcon(qta.icon("fa.search", color="#F1F1F1", scale_factor=.9))
+        self.ui.nextButton.setText("")
+        self.ui.nextButton.setIcon(qta.icon("fa.forward", color="#F1F1F1", scale_factor=.9))
+        self.ui.prevButton.setText("")
+        self.ui.prevButton.setIcon(qta.icon("fa.backward", color="#F1F1F1", scale_factor=.9))
         self.update_completer()
         position = self.frameGeometry()
         position.moveCenter(
@@ -48,7 +55,7 @@ class MainWindow(Logger, QtGui.QMainWindow):
         self.app.close()
 
     def update_completer(self):
-        self.completer = QtGui.QCompleter(self.app.tags)
+        self.completer = C_QCompleter(self.app.tags)
         self.completer.setCaseSensitivity(QtCore.Qt.CaseInsensitive)
         self.completer.setCompletionRole(QtCore.Qt.DisplayRole)
         self.ui.searchLine.setCompleter(self.completer)
@@ -129,11 +136,9 @@ class MainWindow(Logger, QtGui.QMainWindow):
 
     def disable_all_buttons(self):
         self.disable_buttons(self.BUTTONS)
-        [g.disable_all_buttons() for g in self.app.current_page]
 
     def enable_all_buttons(self):
         self.enable_buttons(self.BUTTONS)
-        [g.enable_all_buttons() for g in self.app.current_page]
 
     def show_galleries(self, galleries):
         for gallery in galleries:
@@ -185,13 +190,14 @@ class MainWindow(Logger, QtGui.QMainWindow):
 
 
 class CustomizeWindow(Logger, QtGui.QDialog):
-    def __init__(self, app, gallery):
-        super(CustomizeWindow, self).__init__(app)
+    def __init__(self, main_window, gallery):
+        super(CustomizeWindow, self).__init__(main_window)
+        self.setParent(main_window)
         self._gallery = weakref.ref(gallery)
         self.ui = Ui_Dialog()
         self.ui.setupUi(self)
         self.ui.submitButton.clicked.connect(self.gallery.save_customization)
-        self.setWindowFlags(self.windowFlags() | QtCore.Qt.FramelessWindowHint | QtCore.Qt.Popup | QtCore.Qt.WindowSystemMenuHint)
+        self.setWindowFlags(QtCore.Qt.FramelessWindowHint | QtCore.Qt.Dialog)
         # position = self.frameGeometry()
         # position.moveCenter(
         #     QtGui.QDesktopWidget().availableGeometry().center())
@@ -244,14 +250,17 @@ class Popup(QtGui.QMessageBox, Logger):
 
     def exception_hook(self, extype, exvalue, extraceback):
         fatal = True  # Default to true for unhandled exceptions
-        self.setWindowTitle("Error")
+        self.setWindowTitle("Whoops")
         if issubclass(extype, Exceptions.BaseException):
             fatal = exvalue.fatal
             self.setText(exvalue.msg)
             if exvalue.details:
                 self.setDetailedText(exvalue.details)
         else:
-            self.setText("An unhandled %s exception has occurred. The program will now shutdown." % str(extype))
+            self.setText("Sorry, the PandaView has encountered a problem and must shutdown.\n"
+                         "Feel free to open an issue at %s" % self.app.BUG_PAGE)
+            self.setDetailedText(
+                "Exception type: %s\nException value: %s" % (extype, exvalue))
             self.logger.error("An unhandled %s exception occured." % str(extype))
         self.logger.error("Exception details: ",
                           exc_info=(extype, exvalue, extraceback))

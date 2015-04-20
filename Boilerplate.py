@@ -103,20 +103,3 @@ class GalleryBoilerplate(Logger): # Need to fix this shit, not scalable with add
         self.gid = val[0]
         self.token = val[1]
 
-    def set_button_status(self, button, status):
-        try:
-            getattr(getattr(self.C_QGallery, button), "setEnabled")(status)
-        except AttributeError:
-            pass
-
-    def disable_buttons(self, buttons):
-        [self.set_button_status(b, False) for b in buttons]
-
-    def enable_buttons(self, buttons):
-        [self.set_button_status(b, True) for b in buttons]
-
-    def disable_all_buttons(self):
-        self.disable_buttons(self.BUTTONS)
-
-    def enable_all_buttons(self):
-        self.enable_buttons(self.BUTTONS)

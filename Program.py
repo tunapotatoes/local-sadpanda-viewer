@@ -20,6 +20,7 @@ import Database
 
 class Program(QtGui.QApplication, Logger):
     PAGE_SIZE = 100
+    BUG_PAGE = "https://github.com/seanegoodwin/local-sadpanda-viewer/issues"
     CONFIG_DIR = os.path.expanduser("~/.lsv")
     THUMB_DIR = os.path.join(CONFIG_DIR, "thumbs")
     DEFAULT_CONFIG = {"dirs": [], "cookies": {"ipb_member_id": "",
@@ -42,6 +43,8 @@ class Program(QtGui.QApplication, Logger):
             os.makedirs(self.THUMB_DIR)
         Database.setup()
         self.load_config()
+        self.setWindowIcon(QtGui.QIcon("icon.ico"))
+        self.main_window.setWindowIcon((QtGui.QIcon("icon.ico")))
         self.setup_threads()
         self.find_galleries()
         return super(Program, self).exec_()
@@ -303,6 +306,9 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG,
                         filename=filename,
                         format="%(asctime)s: %(name)s %(levelname)s %(message)s")
+    if os.name == "nt":
+        import ctypes
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("lsv.ui")
     app = Program(sys.argv)
     sys.excepthook = app.error_window.exception_hook
     sys.exit(app.exec_())
