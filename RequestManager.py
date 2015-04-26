@@ -5,6 +5,7 @@ import json
 import random
 from Logger import Logger
 import Exceptions
+import threading
 
 
 class RequestClass(Logger):
@@ -18,7 +19,7 @@ class RequestClass(Logger):
     HEADERS = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:30.0) Gecko/20100101 Firefox/30.0"}  # No idea if this actually helps
     count = 0
     prevtime = 0
-    in_use = False
+    lock = threading.Lock()
 
     @property
     def id(self):
@@ -36,9 +37,14 @@ class RequestClass(Logger):
     def pwhash(self, val):
         self.COOKIES["ipb_pass_hash"] = val
 
+    def rest(self, method, url, kwargs):
+        try:
+            self.lock.acquire()
+            return self._rest(method, url, **kwargs)
+        finally:
+            self.lock.release()
+
     def _rest(self, method, url, **kwargs):
-        assert not self.in_use  # Never should happen, but just in case
-        self.in_use = True
         retry_count = kwargs.pop("retry_count", self.API_RETRY_COUNT)
         payload = kwargs.pop("payload", None)
         if payload:
@@ -69,7 +75,6 @@ class RequestClass(Logger):
                 retry_count -= 1
                 self.logger.warning(
                     "Request failed, retry with %s tries left." % retry_count)
-        self.in_use = False
         if not retry_count >= 0:
             self.logger.warning("Request ran out of retry attempts.")
             return
@@ -91,7 +96,6 @@ class RequestClass(Logger):
             self.logger.warning("Error code: %s")
             return False
         if "image/gif" in content_type:
-            self.in_use = False
             raise(Exceptions.BadCredentialsError())
         if "text/html" in content_type and "You are opening" in response.text:
             self.logger.info("Detected that we are overloading SP. Waiting for %s seconds" %
@@ -99,7 +103,6 @@ class RequestClass(Logger):
             time.sleep(self.API_TIME_TOO_FAST_WAIT)
             return False
         if "text/html" in content_type and "Your IP address" in response.text:
-            self.in_use = False
             raise(Exceptions.UserBannedError())
         try:
             if response.json().get("error") is not None:
@@ -111,10 +114,11 @@ class RequestClass(Logger):
         return True
 
     def get(self, *args, **kwargs):
-        return self._rest("get", *args, **kwargs)
+        return self.rest("get", *args, **kwargs)
+
 
     def post(self, *args, **kwargs):
-        return self._rest("post", *args, **kwargs)
+        return self.rest("post", *args, **kwargs)
 
 
 RequestManager = RequestClass()

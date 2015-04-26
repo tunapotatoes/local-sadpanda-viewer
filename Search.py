@@ -28,7 +28,6 @@ class Search(Logger):
     def search_by_gallery(cls, gallery):
         cls = cls()
         cls.name = gallery.title  # For logging
-        cls.logger.debug("Searching with gallery %s" % cls.name)
         hash_search = cls._search(sha_hash=gallery.generate_image_hash())
         cls.logger.debug("Hash search results: %s" % hash_search)
         if len(hash_search) == 1:

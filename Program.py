@@ -4,7 +4,7 @@
 from PySide import QtGui
 from time import strftime
 from Logger import Logger
-from ui.gallery import C_QGallery
+from ui.gallery import QGallery
 from RequestManager import RequestManager
 from operator import attrgetter
 import sys
@@ -16,6 +16,7 @@ import Threads
 import Windows
 import Exceptions
 import Database
+from Gallery import Gallery
 
 
 class Program(QtGui.QApplication, Logger):
@@ -26,9 +27,16 @@ class Program(QtGui.QApplication, Logger):
     DEFAULT_CONFIG = {"dirs": [], "cookies": {"ipb_member_id": "",
                                               "ipb_pass_hash": ""}}
 
+    class SortMap(object):
+        NameSort = 0
+        ReadCountSort = 1
+        LastReadSort = 2
+        RatingSort = 3
+
     def __init__(self, args):
         super(Program, self).__init__(args)
-        self.tags = ["test"]
+
+        self.tags = []
         self.galleries = []
         self.threads = {}
         self.config = {}
@@ -45,8 +53,9 @@ class Program(QtGui.QApplication, Logger):
         self.load_config()
         self.setWindowIcon(QtGui.QIcon("icon.ico"))
         self.main_window.setWindowIcon((QtGui.QIcon("icon.ico")))
+        self.main_window.clear_progress_bar()
         self.setup_threads()
-        self.find_galleries()
+        self.find_galleries(initial=True)
         return super(Program, self).exec_()
 
     @property
@@ -116,8 +125,8 @@ class Program(QtGui.QApplication, Logger):
 
     def update_config(self, **kwargs):
         new_config = kwargs.get("config", {})
+        self.logger.info("Updating config.")
         if new_config:
-            self.logger.debug("Updating config with %s" % new_config)
             self.config.update(new_config)
         else:
             self.dirs = self.main_window.dirs
@@ -202,16 +211,25 @@ class Program(QtGui.QApplication, Logger):
         self.tags += list(map(lambda x: "-" + x, self.tags))
         self.main_window.update_completer()
 
-    def find_galleries(self):
+    def find_galleries(self, initial=False):
+        if initial:
+            self.main_window.status_messenger.set_initial_loading()
+        elif not self.galleries:
+            self.main_window.status_messenger.set_searching_galleries()
         self.main_window.disable_all_buttons()
         self.logger.debug("Sending start signal to gallery thread")
         self.threads["gallery"].queue.put(None)
 
     def find_galleries_done(self, galleries):
         self.main_window.enable_all_buttons()
+        print galleries[0].time_loading[0]
         for gallery in galleries:
-            gallery.C_QGallery = C_QGallery(self.main_window, gallery)
+            gallery.C_QGallery = QGallery(self.main_window, gallery)
         self.galleries += galleries
+        if self.galleries:
+            self.main_window.status_messenger.hide()
+        else:
+            self.main_window.status_messenger.set_no_galleries()
         self.logger.debug("Gallery thread done")
         self.setup_tags()
         self.sort()
@@ -270,9 +288,19 @@ class Program(QtGui.QApplication, Logger):
             gallery.__del__()
         self.quit()
 
-    def sort(self):
-        key = lambda x: getattr(x, "true_name").lower()
-        self.galleries.sort(key=key, reverse=False)
+    def sort(self, sort_type=None, descending=False):
+        sort_type = sort_type or self.SortMap.RatingSort
+        key = None
+        if sort_type == self.SortMap.NameSort:
+            key = attrgetter("sort_name")
+        elif sort_type == self.SortMap.LastReadSort:
+            key = attrgetter("last_read")
+        elif sort_type == self.SortMap.RatingSort:
+            key = attrgetter("sort_rating")
+        elif sort_type == self.SortMap.ReadCountSort:
+            key = attrgetter("read_count")
+
+        self.galleries.sort(key=key, reverse=descending)
 
     def switch_page(self, *args):
         if self.main_window.page_number in [-1, self.page_number]:

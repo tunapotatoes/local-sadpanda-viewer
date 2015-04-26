@@ -8,9 +8,9 @@ This shit is why I don't do Qt from hand.
 """
 
 
-class C_QGallery(QtGui.QFrame):
+class QGallery(QtGui.QFrame):
     def __init__(self, parent=None, gallery=None, **kwargs):
-        super(C_QGallery, self).__init__()
+        super(QGallery, self).__init__()
         self.parent = parent
         self.gridLayout_2 = QtGui.QGridLayout()
         self.gridLayout_2.setObjectName("gridLayout_2")
@@ -34,8 +34,7 @@ class C_QGallery(QtGui.QFrame):
         self.horizontalLayout_4.setObjectName("horizontalLayout_4")
         spacerItem1 = QtGui.QSpacerItem(40, 20, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
         self.horizontalLayout_4.addItem(spacerItem1)
-        self.image = ui.misc.C_QLabel()
-        self.image.setStyleSheet("border: 1px solid black;")
+        self.image = ui.misc.CQGalleryImage()
         self.image.setObjectName("image")
         self.image.hide()
         self.horizontalLayout_4.addWidget(self.image)
@@ -61,7 +60,7 @@ class C_QGallery(QtGui.QFrame):
         # self.horizontalLayout_3.addWidget(self.rating)
 
         for i in range(1, 6):
-            star = ui.misc.C_QStar(self, i)
+            star = ui.misc.CQStar(self, i)
             star.setAlignment(QtCore.Qt.AlignCenter)
             setattr(self, "star%s" % i, star)
             self.horizontalLayout_3.addWidget(star)
@@ -78,33 +77,29 @@ class C_QGallery(QtGui.QFrame):
         self.verticalLayout.addLayout(self.horizontalLayout_3)
         self.gridLayout_2.addLayout(self.verticalLayout, 0, 0, 1, 1)
         self.retranslateUi()
-        # My manual stuff:
-        #self.setContentsMargins(9, 9, 9, 9)
         self.gallery = gallery
         self.setLayout(self.gridLayout_2)
         self.image.clicked.connect(self.gallery.open_file)
         self.update()
         self.setFixedSize(225, 400)
-        #self.hide()
 
     def update(self):
         self.title.setText(self.gallery.title)
         self.setup_rating()
-        #self.rating.setText("Rating: %s" % self.gallery.rating)
-        self._setToolTip()
+        self.setup_tooltip()
 
     def setup_rating(self, rating=None):
         rating = rating or float(self.gallery.rating or 0)
         num_stars = int(rating)
         half_star = (rating - num_stars) >= 0.5
         for i in range(1, 6):
-            cstar = getattr(self, "star%s" % i)
+            star = getattr(self, "star%s" % i)
             if i <= num_stars:
-                cstar.set_full_star()
+                star.set_full_star()
             elif i == num_stars + 1 and half_star:
-                cstar.set_half_star()
+                star.set_half_star()
             else:
-                cstar.set_empty_star()
+                star.set_empty_star()
 
     @property
     def gallery(self):
@@ -146,12 +141,11 @@ class C_QGallery(QtGui.QFrame):
         #self.rating.setText(QtGui.QApplication.translate("Form", "TextLabel", None, QtGui.QApplication.UnicodeUTF8))
         self.setProperty("class", QtGui.QApplication.translate("Form", "sidebarFrame", None, QtGui.QApplication.UnicodeUTF8))
 
-    def _setToolTip(self):
+    def setup_tooltip(self):
+        # Don't remove extras spaces. Doesn't work properly without it. No idea why
         plural = "s" if self.gallery.read_count != 1 else ""
-        tooltip = "Read %s time%s"
-        tooltip = tooltip % (self.gallery.read_count, plural)
+        tooltip = "Read %s time%s   " % (self.gallery.read_count, plural)
         if self.gallery.last_read:
-            # Don't remove extras spaces. Doesn't work properly without it. No idea why
             tooltip += "<br/>Last read on %s   " % self.gallery.local_last_read_time
         if self.gallery.tags:
             tooltip += "<br />Tags: " + ", ".join(self.gallery.tags)

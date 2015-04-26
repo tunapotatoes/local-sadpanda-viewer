@@ -5,10 +5,9 @@ from PySide import QtCore, QtGui
 from Logger import Logger
 from ui.main_window import Ui_MainWindow
 from ui.flow import FlowLayout
-from ui.misc import C_QFileDialog, C_QCompleter
+from ui.misc import CQFileDialog, CQCompleter, CQSpinner
 from ui.customize import Ui_Dialog
 import weakref
-import traceback
 import Exceptions
 import qtawesome as qta
 
@@ -17,7 +16,7 @@ class MainWindow(Logger, QtGui.QMainWindow):
     progress = 0
     BUTTONS = ["searchButton",
                "refreshButton",
-               "submitButton",
+               "saveButton",
                "cancelButton",
                "nextButton",
                "prevButton",
@@ -26,13 +25,19 @@ class MainWindow(Logger, QtGui.QMainWindow):
     def __init__(self, app):
         super(MainWindow, self).__init__()
         self.app = app
+
         self.button_lock = False
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
+
+        # TODO Move this shit into the ui setup method
+        for button in self.BUTTONS:
+            button = getattr(self.ui, button)
+            button.locks = {}
         self.ui.flowLayout = FlowLayout(self.ui.scrollAreaWidgetContents)
         self.ui.searchButton.clicked.connect(self.search)
         self.ui.refreshButton.clicked.connect(self.refresh_button_handler)
-        self.ui.submitButton.clicked.connect(self.app.update_config)
+        self.ui.saveButton.clicked.connect(self.app.update_config)
         self.ui.cancelButton.clicked.connect(self.app.load_config)
         self.ui.nextButton.clicked.connect(self.next_page)
         self.ui.prevButton.clicked.connect(self.prev_page)
@@ -43,11 +48,12 @@ class MainWindow(Logger, QtGui.QMainWindow):
         self.ui.nextButton.setIcon(qta.icon("fa.forward", color="#F1F1F1", scale_factor=.9))
         self.ui.prevButton.setText("")
         self.ui.prevButton.setIcon(qta.icon("fa.backward", color="#F1F1F1", scale_factor=.9))
+        self.configure_combo_box()
         self.update_completer()
+        self.status_messenger = CQSpinner(self.ui.scrollArea)
         position = self.frameGeometry()
         position.moveCenter(
             QtGui.QDesktopWidget().availableGeometry().center())
-        self.move(position.topLeft())
         self.show()
         self.raise_()
 
@@ -55,7 +61,7 @@ class MainWindow(Logger, QtGui.QMainWindow):
         self.app.close()
 
     def update_completer(self):
-        self.completer = C_QCompleter(self.app.tags)
+        self.completer = CQCompleter(self.app.tags)
         self.completer.setCaseSensitivity(QtCore.Qt.CaseInsensitive)
         self.completer.setCompletionRole(QtCore.Qt.DisplayRole)
         self.ui.searchLine.setCompleter(self.completer)
@@ -174,7 +180,7 @@ class MainWindow(Logger, QtGui.QMainWindow):
 
     def browse(self):
         self.logger.debug("Browsing for files.")
-        browser = C_QFileDialog()
+        browser = CQFileDialog()
         browser.exec_()
         if browser.open_clicked:
             self.directories = browser.selectedFiles
@@ -184,7 +190,7 @@ class MainWindow(Logger, QtGui.QMainWindow):
     def configure_combo_box(self):
         self.ui.pageBox.currentIndexChanged.connect(lambda x: None)
         self.ui.pageBox.clear()
-        self.ui.pageBox.addItems(list(map(lambda x: "Page " + str(x),
+        self.ui.pageBox.addItems(list(map(lambda x: "Page %s of %s" % (str(x), self.app.page_count),
                                           range(1, self.app.page_count + 1))))
         self.ui.pageBox.currentIndexChanged.connect(self.app.switch_page)
 
@@ -257,7 +263,7 @@ class Popup(QtGui.QMessageBox, Logger):
             if exvalue.details:
                 self.setDetailedText(exvalue.details)
         else:
-            self.setText("Sorry, the PandaView has encountered a problem and must shutdown.\n"
+            self.setText("Sorry, PandaView has encountered a problem and must shutdown.\n"
                          "Feel free to open an issue at %s" % self.app.BUG_PAGE)
             self.setDetailedText(
                 "Exception type: %s\nException value: %s" % (extype, exvalue))

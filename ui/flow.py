@@ -11,7 +11,7 @@ class FlowLayout(QtGui.QLayout):
     def __init__(self, parent=None, margin=-1, spacing=-1):
         super(FlowLayout, self).__init__(parent)
         self.setContentsMargins(margin, margin, margin, margin)
-        self.setSpacing(spacing)
+        #self.setSpacing(spacing)
         self.itemList = []
 
 
@@ -22,6 +22,7 @@ class FlowLayout(QtGui.QLayout):
 
     def addItem(self, item):
         self.itemList.append(item)
+
 
     def count(self):
         return len(self.itemList)

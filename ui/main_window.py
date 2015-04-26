@@ -8,7 +8,7 @@
 # WARNING! All changes made in this file will be lost!
 
 from PySide import QtCore, QtGui
-from ui.misc import C_QTextEdit
+from ui.misc import CQTextEdit, CQScrollArea, CQLockButton
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -195,7 +195,7 @@ class Ui_MainWindow(object):
         self.searchLine.setSizePolicy(sizePolicy)
         self.searchLine.setObjectName("searchLine")
         self.horizontalLayout.addWidget(self.searchLine)
-        self.searchButton = QtGui.QPushButton(self.frame)
+        self.searchButton = CQLockButton(self.frame)
         sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -211,6 +211,28 @@ class Ui_MainWindow(object):
         self.horizontalLayout.addWidget(self.searchButton)
         self.verticalLayout.addLayout(self.horizontalLayout)
         self.gridLayout_5.addWidget(self.frame, 0, 0, 1, 1)
+
+        # TODO fix literally everything
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         self.frame_5 = QtGui.QFrame(self.sidebarFrame)
         sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Preferred)
         sizePolicy.setHorizontalStretch(0)
@@ -235,7 +257,7 @@ class Ui_MainWindow(object):
         spacerItem1 = QtGui.QSpacerItem(40, 20, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
         self.horizontalLayout_2.addItem(spacerItem1)
         self.gridLayout_3.addLayout(self.horizontalLayout_2, 0, 0, 1, 3)
-        self.prevButton = QtGui.QPushButton(self.frame_5)
+        self.prevButton = CQLockButton(self.frame_5)
         sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -258,13 +280,8 @@ class Ui_MainWindow(object):
         self.pageBox.setIconSize(QtCore.QSize(0, 0))
         self.pageBox.setFrame(True)
         self.pageBox.setObjectName("pageBox")
-        self.pageBox.addItem("")
-        self.pageBox.addItem("")
-        self.pageBox.addItem("")
-        self.pageBox.addItem("")
-        self.pageBox.addItem("")
         self.gridLayout_3.addWidget(self.pageBox, 1, 1, 1, 1)
-        self.nextButton = QtGui.QPushButton(self.frame_5)
+        self.nextButton = CQLockButton(self.frame_5)
         sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -311,7 +328,7 @@ class Ui_MainWindow(object):
         self.verticalLayout_2.addWidget(self.metaBox)
         self.horizontalLayout_4 = QtGui.QHBoxLayout()
         self.horizontalLayout_4.setObjectName("horizontalLayout_4")
-        self.refreshButton = QtGui.QPushButton(self.frame_3)
+        self.refreshButton = CQLockButton(self.frame_3)
         sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -370,7 +387,7 @@ class Ui_MainWindow(object):
         self.horizontalLayout_7.setObjectName("horizontalLayout_7")
         spacerItem2 = QtGui.QSpacerItem(40, 20, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
         self.horizontalLayout_7.addItem(spacerItem2)
-        self.cancelButton = QtGui.QPushButton(self.frame_4)
+        self.cancelButton = CQLockButton(self.frame_4)
         sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -381,17 +398,17 @@ class Ui_MainWindow(object):
         self.cancelButton.setSizeIncrement(QtCore.QSize(0, 0))
         self.cancelButton.setObjectName("cancelButton")
         self.horizontalLayout_7.addWidget(self.cancelButton)
-        self.submitButton = QtGui.QPushButton(self.frame_4)
+        self.saveButton = CQLockButton(self.frame_4)
         sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.submitButton.sizePolicy().hasHeightForWidth())
-        self.submitButton.setSizePolicy(sizePolicy)
-        self.submitButton.setMinimumSize(QtCore.QSize(50, 23))
-        self.submitButton.setMaximumSize(QtCore.QSize(16777215, 23))
-        self.submitButton.setSizeIncrement(QtCore.QSize(0, 0))
-        self.submitButton.setObjectName("submitButton")
-        self.horizontalLayout_7.addWidget(self.submitButton)
+        sizePolicy.setHeightForWidth(self.saveButton.sizePolicy().hasHeightForWidth())
+        self.saveButton.setSizePolicy(sizePolicy)
+        self.saveButton.setMinimumSize(QtCore.QSize(50, 23))
+        self.saveButton.setMaximumSize(QtCore.QSize(16777215, 23))
+        self.saveButton.setSizeIncrement(QtCore.QSize(0, 0))
+        self.saveButton.setObjectName("submitButton")
+        self.horizontalLayout_7.addWidget(self.saveButton)
         spacerItem3 = QtGui.QSpacerItem(40, 20, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
         self.horizontalLayout_7.addItem(spacerItem3)
         self.gridLayout_4.addLayout(self.horizontalLayout_7, 4, 0, 1, 1)
@@ -408,7 +425,7 @@ class Ui_MainWindow(object):
         self.label_8.setAlignment(QtCore.Qt.AlignLeading|QtCore.Qt.AlignLeft|QtCore.Qt.AlignTop)
         self.label_8.setObjectName("label_8")
         self.verticalLayout_5.addWidget(self.label_8)
-        self.directories = C_QTextEdit(self.frame_4)
+        self.directories = CQTextEdit(self.frame_4)
         sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -454,7 +471,7 @@ class Ui_MainWindow(object):
         self.scrollFrame.setObjectName("scrollFrame")
         self.gridLayout_2 = QtGui.QGridLayout(self.scrollFrame)
         self.gridLayout_2.setObjectName("gridLayout_2")
-        self.scrollArea = QtGui.QScrollArea(self.scrollFrame)
+        self.scrollArea = CQScrollArea(self.scrollFrame)
         self.scrollArea.setEnabled(True)
         self.scrollArea.setMaximumSize(QtCore.QSize(16777209, 16777215))
         self.scrollArea.setAutoFillBackground(True)
@@ -492,10 +509,6 @@ class Ui_MainWindow(object):
 "QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical{\n"
 "     background: none;\n"
 "}\n"
-"\n"
-"\n"
-"\n"
-"\n"
 "\n"
 "QFrame.sidebarFrame {\n"
 "\n"
@@ -566,7 +579,7 @@ class Ui_MainWindow(object):
 "QProgressBar::chunk:horizontal {\n"
 "background: #34353b\n"
 "}")
-        self.scrollArea.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
+        self.scrollArea.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
         self.scrollArea.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
         self.scrollArea.setWidgetResizable(True)
         self.scrollArea.setObjectName("scrollArea")
@@ -576,6 +589,9 @@ class Ui_MainWindow(object):
         self.scrollArea.setWidget(self.scrollAreaWidgetContents)
         self.gridLayout_2.addWidget(self.scrollArea, 0, 0, 1, 1)
         self.gridLayout.addWidget(self.scrollFrame, 0, 1, 1, 1)
+        #self.gridLayout_2.addWidget(CQLockButton("adsd"))
+        #self.scrollArea.hide()
+        #self.gridLayout_2.addWidget(C_QSpinner())
         MainWindow.setCentralWidget(self.centralwidget)
 
         self.retranslateUi(MainWindow)
@@ -592,22 +608,17 @@ class Ui_MainWindow(object):
         MainWindow.setTabOrder(self.memberId, self.passHash)
         MainWindow.setTabOrder(self.passHash, self.directories)
         MainWindow.setTabOrder(self.directories, self.cancelButton)
-        MainWindow.setTabOrder(self.cancelButton, self.submitButton)
-        MainWindow.setTabOrder(self.submitButton, self.scrollArea)
+        MainWindow.setTabOrder(self.cancelButton, self.saveButton)
+        MainWindow.setTabOrder(self.saveButton, self.scrollArea)
 
     def retranslateUi(self, MainWindow):
-        MainWindow.setWindowTitle(QtGui.QApplication.translate("MainWindow", "SadPanda Browser", None, QtGui.QApplication.UnicodeUTF8))
+        MainWindow.setWindowTitle(QtGui.QApplication.translate("MainWindow", "PandaView", None, QtGui.QApplication.UnicodeUTF8))
         self.frame.setProperty("class", QtGui.QApplication.translate("MainWindow", "sidebarFrame", None, QtGui.QApplication.UnicodeUTF8))
         self.label.setText(QtGui.QApplication.translate("MainWindow", "Search", None, QtGui.QApplication.UnicodeUTF8))
         self.searchButton.setText(QtGui.QApplication.translate("MainWindow", "Submit", None, QtGui.QApplication.UnicodeUTF8))
         self.frame_5.setProperty("class", QtGui.QApplication.translate("MainWindow", "sidebarFrame", None, QtGui.QApplication.UnicodeUTF8))
         self.label_10.setText(QtGui.QApplication.translate("MainWindow", "Navigation", None, QtGui.QApplication.UnicodeUTF8))
         self.prevButton.setText(QtGui.QApplication.translate("MainWindow", "Previous", None, QtGui.QApplication.UnicodeUTF8))
-        self.pageBox.setItemText(0, QtGui.QApplication.translate("MainWindow", "1", None, QtGui.QApplication.UnicodeUTF8))
-        self.pageBox.setItemText(1, QtGui.QApplication.translate("MainWindow", "2", None, QtGui.QApplication.UnicodeUTF8))
-        self.pageBox.setItemText(2, QtGui.QApplication.translate("MainWindow", "3", None, QtGui.QApplication.UnicodeUTF8))
-        self.pageBox.setItemText(3, QtGui.QApplication.translate("MainWindow", "4", None, QtGui.QApplication.UnicodeUTF8))
-        self.pageBox.setItemText(4, QtGui.QApplication.translate("MainWindow", "5", None, QtGui.QApplication.UnicodeUTF8))
         self.nextButton.setText(QtGui.QApplication.translate("MainWindow", "Next", None, QtGui.QApplication.UnicodeUTF8))
         self.frame_3.setProperty("class", QtGui.QApplication.translate("MainWindow", "sidebarFrame", None, QtGui.QApplication.UnicodeUTF8))
         self.label_2.setText(QtGui.QApplication.translate("MainWindow", "Gallery Options", None, QtGui.QApplication.UnicodeUTF8))
@@ -615,20 +626,14 @@ class Ui_MainWindow(object):
         self.metaBox.setText(QtGui.QApplication.translate("MainWindow", "Get metadata for galleries", None, QtGui.QApplication.UnicodeUTF8))
         self.refreshButton.setText(QtGui.QApplication.translate("MainWindow", "Submit", None, QtGui.QApplication.UnicodeUTF8))
         self.frame_4.setProperty("class", QtGui.QApplication.translate("MainWindow", "sidebarFrame", None, QtGui.QApplication.UnicodeUTF8))
-        self.label_6.setText(QtGui.QApplication.translate("MainWindow", "Member ID", None, QtGui.QApplication.UnicodeUTF8))
+        self.label_6.setText(QtGui.QApplication.translate("MainWindow", "EX Member ID", None, QtGui.QApplication.UnicodeUTF8))
         self.label_6.setProperty("class", QtGui.QApplication.translate("MainWindow", "smallText", None, QtGui.QApplication.UnicodeUTF8))
-        self.label_7.setText(QtGui.QApplication.translate("MainWindow", "Password Hash", None, QtGui.QApplication.UnicodeUTF8))
+        self.label_7.setText(QtGui.QApplication.translate("MainWindow", "EX Password Hash", None, QtGui.QApplication.UnicodeUTF8))
         self.label_7.setProperty("class", QtGui.QApplication.translate("MainWindow", "smallText", None, QtGui.QApplication.UnicodeUTF8))
         self.cancelButton.setText(QtGui.QApplication.translate("MainWindow", "Cancel", None, QtGui.QApplication.UnicodeUTF8))
-        self.submitButton.setText(QtGui.QApplication.translate("MainWindow", "Submit", None, QtGui.QApplication.UnicodeUTF8))
-        self.label_8.setToolTip(QtGui.QApplication.translate("MainWindow", "<html><head/><body><p><br/></p></body></html>", None, QtGui.QApplication.UnicodeUTF8))
+        self.saveButton.setText(QtGui.QApplication.translate("MainWindow", "Save", None, QtGui.QApplication.UnicodeUTF8))
         self.label_8.setText(QtGui.QApplication.translate("MainWindow", "Folders  ", None, QtGui.QApplication.UnicodeUTF8))
         self.label_8.setProperty("class", QtGui.QApplication.translate("MainWindow", "smallText", None, QtGui.QApplication.UnicodeUTF8))
-        self.directories.setHtml(QtGui.QApplication.translate("MainWindow", "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
-"<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
-"p, li { white-space: pre-wrap; }\n"
-"</style></head><body style=\" font-family:\'Droid Sans\'; font-size:8pt; font-weight:400; font-style:normal;\">\n"
-"<p style=\"-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><br /></p></body></html>", None, QtGui.QApplication.UnicodeUTF8))
         self.label_5.setText(QtGui.QApplication.translate("MainWindow", "Settings", None, QtGui.QApplication.UnicodeUTF8))
         self.statusFrame.setProperty("class", QtGui.QApplication.translate("MainWindow", "sidebarFrame", None, QtGui.QApplication.UnicodeUTF8))
         self.label_3.setText(QtGui.QApplication.translate("MainWindow", "Status", None, QtGui.QApplication.UnicodeUTF8))

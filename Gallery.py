@@ -14,11 +14,14 @@ import Database
 import sys
 import contextlib
 import scandir
+from threading import Lock
 from Boilerplate import GalleryBoilerplate
-from ui.gallery import C_QGallery
+from ui.gallery import QGallery
 from PySide import QtGui, QtCore
 from time import time
 from datetime import datetime
+
+
 
 class Gallery(GalleryBoilerplate):
     IMAGE_EXTS = [".png", ".jpg", ".jpeg"]
@@ -40,6 +43,8 @@ class Gallery(GalleryBoilerplate):
     read_count = 0
     last_read = None
     files = None
+    lock = Lock()
+    time_loading = [0]
 
     class TypeMap(object):
         FolderGallery = 0
@@ -50,29 +55,29 @@ class Gallery(GalleryBoilerplate):
 
     def __init__(self, **kwargs):
         self.metadata = {}
-        self.old_metadata = {}
-        try:
-            self.old_metadata = self.load_old_metadata()
-        except:
-            exc = sys.exc_info()
-            self.logger.warning("Failed to load old metadata.", exc_info=exc)
         self.parent = kwargs.get("parent")
         self.db_file = os.path.join(self.path, self.DB_ID_FILENAME)
         self.db_id = kwargs.get("db_id") or self.find_in_db()
-        self.load_metadata()
-        self.update_metadata(self.old_metadata)
+        if not kwargs.get("loaded", False):
+            self.load_metadata()
+
 
     def __del__(self):
         self.C_QGallery = None
 
     @property
-    def true_name(self):
+    def sort_name(self):
+        "Only used for sorting. Removed parens/braces/brackets."
         name = self.title
         pairs = [("{", "}"), ("(", ")"), ("[", "]")]
         regex = ur"\s*\%s[^%s]*\%s"
         for pair in pairs:
             name = re.sub(regex % (pair[0], pair[0], pair[1]), "",  name)
-        return name.lstrip()
+        return name.lstrip().lower()
+
+    @property
+    def sort_rating(self):
+        return float(self.rating or 0)
 
     def set_rating(self, rating):
         self.crating = str(rating)
@@ -121,24 +126,35 @@ class Gallery(GalleryBoilerplate):
         #         dead_galleries = session.query(Database.Gallery).filter(Database.Gallery.dead == True)
 
         if not db_id:
-            with Database.get_session(self) as session:
-                db_gallery = Database.Gallery()
-                if isinstance(self, ArchiveGallery):
-                    db_gallery.type = self.TypeMap.ArchiveGallery
-                    db_gallery.path = self.archive_file
-                else:
-                    db_gallery.type = self.TypeMap.FolderGallery
-                    db_gallery.path = self.path
-                self.db_uuid = str(uuid.uuid1())
-                db_gallery.uuid = self.db_uuid
-                session.add(db_gallery)
-                session.commit()
-                db_id = db_gallery.id
-                self.db_id = db_id
-                self.save_db_file()
+            old_metadata = {}
+            try:
+                old_metadata = self.load_old_metadata()
+            except:
+                exc = sys.exc_info()
+                self.logger.warning("Failed to load old metadata.", exc_info=exc)
+            self.create_in_db()
+            self.update_metadata(old_metadata)
         return db_id
 
+    def create_in_db(self):
+        with Database.get_session(self) as session:
+            db_gallery = Database.Gallery()
+            if isinstance(self, ArchiveGallery):
+                db_gallery.type = self.TypeMap.ArchiveGallery
+                db_gallery.path = self.archive_file
+            else:
+                db_gallery.type = self.TypeMap.FolderGallery
+                db_gallery.path = self.path
+            self.db_uuid = str(uuid.uuid1())
+            db_gallery.uuid = self.db_uuid
+            session.add(db_gallery)
+            session.commit()
+            db_id = db_gallery.id
+            self.db_id = db_id
+            self.save_db_file()
+
     def load_metadata(self):
+        start_time = time()
         with Database.get_session(self) as session:
             db_gallery = session.query(Database.Gallery).filter(Database.Gallery.id == self.db_id)
             assert db_gallery.count() == 1
@@ -155,6 +171,7 @@ class Gallery(GalleryBoilerplate):
                 self.path = db_gallery.path
             for metadata in db_gallery.metadata_collection.all():
                 self.metadata[metadata.name] = json.loads(metadata.json)
+        self.time_loading[0] += time() - start_time
 
     def update_metadata(self, new_metadata):
         self.metadata.update(new_metadata)
@@ -371,6 +388,7 @@ class FolderGallery(Gallery):
 class ArchiveGallery(Gallery):
     ARCHIVE_EXTS = [".zip"]
     DB_ID_KEY = "lsv-db_id"
+    temp_dir = None
 
     def __init__(self, **kwargs):
         self.archive_file = os.path.normpath(kwargs.get("path"))
@@ -378,11 +396,9 @@ class ArchiveGallery(Gallery):
         self.name, self.archive_type = os.path.splitext(os.path.basename(self.archive_file))
         with self.archive("a") as archive:
             archive.testzip()
-            archive.comment = ""
         super(ArchiveGallery, self).__init__(**kwargs)
         self.raw_files = self.find_files()
         assert len(self.raw_files) > 0
-        self.temp_dir = os.path.normpath(tempfile.mkdtemp())
 
     def get_image(self):
         image = QtGui.QImage()
@@ -407,6 +423,7 @@ class ArchiveGallery(Gallery):
             pass
 
     def extract(self):
+        self.temp_dir = os.path.normpath(tempfile.mkdtemp())
         with self.archive("r") as archive:
             archive.extractall(self.temp_dir)
 
@@ -417,7 +434,7 @@ class ArchiveGallery(Gallery):
 
     @property
     def files(self):
-        if not os.path.exists(os.path.join(self.temp_dir, self.raw_files[0])):
+        if not self.temp_dir:
             self.extract()
         return list(map(lambda f: os.path.normpath(os.path.join(
             self.temp_dir, f)), self.raw_files))
