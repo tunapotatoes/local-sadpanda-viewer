@@ -223,8 +223,12 @@ class ImageThread(BaseThread):
         send_galleries = []
         for gallery in galleries:
             if not gallery.image:
-                gallery.load_thumbnail()
-                send_galleries.append(gallery)
+                try:
+                    gallery.load_thumbnail()
+                    send_galleries.append(gallery)
+                except:
+                    exc = sys.exc_info()
+                    self.logger.error("%s gallery failed to get image" % gallery, exc_info=exc)
                 self.signals.progress.emit(inc_val)
                 if len(send_galleries) == self.EMIT_FREQ:
                     self.signals.gallery.emit(send_galleries)
