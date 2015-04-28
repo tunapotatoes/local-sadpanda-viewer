@@ -19,6 +19,7 @@ class MainWindow(Logger, QtGui.QMainWindow):
                "saveButton",
                "cancelButton",
                "nextButton",
+               "sortButton",
                "prevButton",
                "pageBox"]
 
@@ -42,6 +43,7 @@ class MainWindow(Logger, QtGui.QMainWindow):
         self.ui.nextButton.clicked.connect(self.next_page)
         self.ui.prevButton.clicked.connect(self.prev_page)
         self.ui.directories.clicked.connect(self.browse)
+        self.ui.sortButton.clicked.connect(self.app.sort)
         self.ui.searchButton.setText("")
         self.ui.searchButton.setIcon(qta.icon("fa.search", color="#F1F1F1", scale_factor=.9))
         self.ui.nextButton.setText("")
@@ -128,6 +130,14 @@ class MainWindow(Logger, QtGui.QMainWindow):
     def dirs(self, val):
         self.ui.directories.clear()
         [self.ui.directories.append(v) for v in val]
+
+    @property
+    def sort_type(self):
+        return self.ui.sortBox.currentIndex()
+
+    @property
+    def sort_is_descending(self):
+        return self.ui.descendingButton.isChecked()
 
     def set_button_status(self, button, status):
         getattr(getattr(self.ui, button), "setEnabled")(status)

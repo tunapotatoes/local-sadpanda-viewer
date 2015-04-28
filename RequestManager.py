@@ -37,7 +37,7 @@ class RequestClass(Logger):
     def pwhash(self, val):
         self.COOKIES["ipb_pass_hash"] = val
 
-    def rest(self, method, url, kwargs):
+    def rest(self, method, url, **kwargs):
         try:
             self.lock.acquire()
             return self._rest(method, url, **kwargs)
@@ -63,9 +63,8 @@ class RequestClass(Logger):
             self.logger.info("Sending %s request to %s with payload %s" %
                              (method, url, payload))
             self.prevtime = time.time()
-            response = getattr(requests,
-                               method)(url, data=payload, headers=self.HEADERS,
-                                       cookies=self.COOKIES, **kwargs)
+            response = getattr(requests, method)(url, data=payload, headers=self.HEADERS,
+                                                 cookies=self.COOKIES, **kwargs)
             # except TypeError:
             #     response = getattr(requests,
             #                        method)(url, cookies=self.COOKIES, **kwargs)

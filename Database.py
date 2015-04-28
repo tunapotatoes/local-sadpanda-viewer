@@ -43,6 +43,7 @@ class Gallery(base):
     uuid = sqlalchemy.Column(sqlalchemy.Text, nullable=False)
     last_read = sqlalchemy.Column(sqlalchemy.Integer)
     read_count = sqlalchemy.Column(sqlalchemy.Integer, default=0, nullable=False)
+    time_added = sqlalchemy.Column(sqlalchemy.Integer)
     metadata_collection = sqlalchemy.orm.relationship("Metadata", lazy="dynamic", backref="gallery")
 
 

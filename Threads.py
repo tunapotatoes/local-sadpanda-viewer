@@ -9,7 +9,6 @@ import copy
 import scandir
 import os
 import zipfile
-from time import time
 import sys
 import math
 from decimal import Decimal
@@ -93,6 +92,7 @@ class GalleryThread(BaseThread):
                 self.find_galleries()
 
     def load_from_db(self):
+        candidates = {"folder": [], "archive": []}
         with Database.get_session(self) as session:
             db_galleries = session.query(Database.Gallery)
             db_gallery_list = [g for g in db_galleries]
@@ -105,17 +105,16 @@ class GalleryThread(BaseThread):
                     db_gallery.dead = True
                     session.add(db_gallery)
                     continue
-
-
-                    # if db_gallery.type == Gallery.TypeMap.FolderGallery:
-                    #     candidates["folder"].append({"path": db_gallery.path,
-                    #                                  "parent": self.parent.main_window,
-                    #                                  "db_id": db_gallery.id})
-                    # elif db_gallery.type == Gallery.TypeMap.ArchiveGallery:
-                    #     candidates["archive"].append(
-                    #         {"path": db_gallery.path,
-                    #          "parent": self.parent.main_window,
-                    #          "db_id": db_gallery.id})
+                candidate = {"path": db_gallery.path,
+                             "parent": self.parent.main_window,
+                             "db_id": db_gallery.id,
+                             "db_obj": db_gallery,
+                             "loaded": True}
+                if db_gallery.type == Gallery.TypeMap.FolderGallery:
+                    candidates["folder"].append(candidate)
+                elif db_gallery.type == Gallery.TypeMap.ArchiveGallery:
+                    candidates["archive"].append(candidate)
+            self.create_from_dict(candidates)
         self.loaded = True
 
     def find_galleries(self):
@@ -140,17 +139,18 @@ class GalleryThread(BaseThread):
         self.create_from_dict(candidates)
 
     def create_from_dict(self, candidates):
-        gallery_candidates = []
-        galleries = []
         invalid_permissions = []
         invalid_files = []
         unsupported_files = []
+        gallery_candidates = []
+        galleries = []
         gallery_candidates += candidates["folder"]
         gallery_candidates += candidates["archive"]
         for gallery in gallery_candidates:
             if gallery.get("path") in self.existing_paths:
                 continue
             self.existing_paths.append(gallery.get("path"))
+            gallery_obj = None
             try:
                 if gallery in candidates["archive"]:
                     try:
@@ -158,28 +158,44 @@ class GalleryThread(BaseThread):
                         galleries.append(gallery_obj)
                     except IOError:
                         galleries.remove(gallery_obj)
+                        gallery_obj = None
                         invalid_permissions.append(gallery.get("path"))
                     except zipfile.BadZipfile:
                         galleries.remove(gallery_obj)
+                        gallery_obj = None
                         invalid_files.append(gallery.get("path"))
                     except NotImplementedError:
                         galleries.remove(gallery_obj)
+                        gallery_obj = None
                         unsupported_files.append(gallery.get("path"))
                 else:
-                    galleries.append(FolderGallery(**gallery))
+                    gallery_obj = FolderGallery(**gallery)
+                    galleries.append(gallery_obj)
             except AssertionError:
+                raise
+                gallery_obj = None
                 pass
             except:
+                gallery_obj = None
                 exc = sys.exc_info()
                 self.logger.error("%s gallery got unhandled exception" % gallery, exc_info=exc)
+            if gallery.get("loaded", False):
+                if gallery_obj:
+                    gallery_obj.load_from_db_object(gallery.get("db_obj"))
+                else:
+                    with Database.get_session(self) as session:
+                        db_id = gallery.get("db_id")
+                        db_gallery = session.query(Database.Gallery).filter(Database.Gallery.id == db_id)[0]
+                        db_gallery.dead = True
+                        session.add(db_gallery)
         self.signals.end.emit(galleries)
         if invalid_permissions or invalid_files or unsupported_files:
             raise Exceptions.InvalidZip(invalid_permissions, invalid_files, unsupported_files)
 
 
+
 class ImageThread(BaseThread):
-    IMAGE_WIDTH = 200
-    EMIT_FREQ = 25
+    EMIT_FREQ = 5
     id = "image"
 
     def __init__(self, parent, **kwargs):

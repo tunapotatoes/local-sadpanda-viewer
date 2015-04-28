@@ -18,7 +18,7 @@ from threading import Lock
 from Boilerplate import GalleryBoilerplate
 from ui.gallery import QGallery
 from PySide import QtGui, QtCore
-from time import time
+from time import time, sleep
 from datetime import datetime
 
 
@@ -43,6 +43,7 @@ class Gallery(GalleryBoilerplate):
     read_count = 0
     last_read = None
     files = None
+    time_added = None
     lock = Lock()
     time_loading = [0]
 
@@ -51,7 +52,7 @@ class Gallery(GalleryBoilerplate):
         ArchiveGallery = 1
 
     def __repr__(self):
-        return self.name
+        return self.name or super(self, Gallery).__repr__()
 
     def __init__(self, **kwargs):
         self.metadata = {}
@@ -60,7 +61,6 @@ class Gallery(GalleryBoilerplate):
         self.db_id = kwargs.get("db_id") or self.find_in_db()
         if not kwargs.get("loaded", False):
             self.load_metadata()
-
 
     def __del__(self):
         self.C_QGallery = None
@@ -82,7 +82,6 @@ class Gallery(GalleryBoilerplate):
     def set_rating(self, rating):
         self.crating = str(rating)
         self.save_metadata()
-
 
     def customize(self):
         self.customize_window = Windows.CustomizeWindow(self.parent, self)
@@ -134,7 +133,7 @@ class Gallery(GalleryBoilerplate):
                 self.logger.warning("Failed to load old metadata.", exc_info=exc)
             self.create_in_db()
             self.update_metadata(old_metadata)
-        return db_id
+        return self.db_id
 
     def create_in_db(self):
         with Database.get_session(self) as session:
@@ -147,31 +146,34 @@ class Gallery(GalleryBoilerplate):
                 db_gallery.path = self.path
             self.db_uuid = str(uuid.uuid1())
             db_gallery.uuid = self.db_uuid
+            db_gallery.time_added = int(time())
             session.add(db_gallery)
             session.commit()
-            db_id = db_gallery.id
-            self.db_id = db_id
-            self.save_db_file()
+            self.db_id = db_gallery.id
 
     def load_metadata(self):
         start_time = time()
         with Database.get_session(self) as session:
+            print self.db_id
             db_gallery = session.query(Database.Gallery).filter(Database.Gallery.id == self.db_id)
             assert db_gallery.count() == 1
-            db_gallery = db_gallery[0]
-            self.thumbnail_path = db_gallery.thumbnail_path
-            self.image_hash = db_gallery.image_hash
-            self.db_uuid = db_gallery.uuid
-            self.read_count = db_gallery.read_count
-            self.last_read = db_gallery.last_read
-            if isinstance(self, ArchiveGallery):
-                self.archive_file = db_gallery.path
-                self.path = os.path.dirname(self.archive_file)
-            else:
-                self.path = db_gallery.path
-            for metadata in db_gallery.metadata_collection.all():
-                self.metadata[metadata.name] = json.loads(metadata.json)
+            self.load_from_db_object(db_gallery[0])
         self.time_loading[0] += time() - start_time
+
+    def load_from_db_object(self, db_gallery):
+        self.thumbnail_path = db_gallery.thumbnail_path
+        self.image_hash = db_gallery.image_hash
+        self.db_uuid = db_gallery.uuid
+        self.read_count = db_gallery.read_count
+        self.last_read = db_gallery.last_read
+        self.time_added = db_gallery.time_added
+        if isinstance(self, ArchiveGallery):
+            self.archive_file = db_gallery.path
+            self.path = os.path.dirname(self.archive_file)
+        else:
+            self.path = db_gallery.path
+        for metadata in db_gallery.metadata_collection.all():
+            self.metadata[metadata.name] = json.loads(metadata.json)
 
     def update_metadata(self, new_metadata):
         self.metadata.update(new_metadata)
@@ -303,7 +305,7 @@ class Gallery(GalleryBoilerplate):
 
     def load_thumbnail(self):
         if not self.thumbnail_path or not os.path.exists(self.thumbnail_path) or not self.verify_hash():
-            self.thumbnail_path = os.path.join(self.parent.app.THUMB_DIR, str(uuid.uuid1()))
+            self.thumbnail_path = os.path.join(self.parent.app.THUMB_DIR, str(uuid.uuid1()) + ".jpg")
             self.image = self.resize_image()
             self.logger.debug("Saving new thumbnail")
             assert self.image.save(self.thumbnail_path, "JPG")
@@ -394,8 +396,9 @@ class ArchiveGallery(Gallery):
         self.archive_file = os.path.normpath(kwargs.get("path"))
         self.path = os.path.dirname(self.archive_file)
         self.name, self.archive_type = os.path.splitext(os.path.basename(self.archive_file))
-        with self.archive("a") as archive:
-            archive.testzip()
+        if not kwargs.get("loaded", False):
+            with self.archive("a") as archive:
+                archive.testzip()
         super(ArchiveGallery, self).__init__(**kwargs)
         self.raw_files = self.find_files()
         assert len(self.raw_files) > 0

@@ -16,7 +16,6 @@ import Threads
 import Windows
 import Exceptions
 import Database
-from Gallery import Gallery
 
 
 class Program(QtGui.QApplication, Logger):
@@ -32,6 +31,7 @@ class Program(QtGui.QApplication, Logger):
         ReadCountSort = 1
         LastReadSort = 2
         RatingSort = 3
+        DateAddedSort = 4
 
     def __init__(self, args):
         super(Program, self).__init__(args)
@@ -41,7 +41,7 @@ class Program(QtGui.QApplication, Logger):
         self.threads = {}
         self.config = {}
         self.pages = [[]]
-        self.version = "ma.mi"
+        self.version = "0.1"
         self.page_number = 0
         self.main_window = Windows.MainWindow(self)
         self.error_window = Windows.Popup(self)
@@ -99,12 +99,7 @@ class Program(QtGui.QApplication, Logger):
         with Database.get_session(self) as session:
             db_config = session.query(Database.Config)
             if db_config.count() == 0:
-                self.config = self.DEFAULT_CONFIG
-                new_config = Database.Config()
-                new_config.json = json.dumps(self.config)
-                new_config.version = self.version
-                session.add(new_config)
-                session.commit()
+                self.create_config()
             else:
                 assert db_config.count() == 1
                 db_config = db_config[0]
@@ -114,6 +109,15 @@ class Program(QtGui.QApplication, Logger):
         self.main_window.member_id = self.member_id
         self.main_window.pass_hash = self.pass_hash
         self.main_window.dirs = self.dirs
+
+    def create_config(self):
+        with Database.get_session(self) as session:
+            self.config = self.DEFAULT_CONFIG
+            new_config = Database.Config()
+            new_config.json = json.dumps(self.config)
+            new_config.version = self.version
+            session.add(new_config)
+            session.commit()
 
     def save_config(self):
         self.logger.debug("Save config to db.")
@@ -222,7 +226,6 @@ class Program(QtGui.QApplication, Logger):
 
     def find_galleries_done(self, galleries):
         self.main_window.enable_all_buttons()
-        print galleries[0].time_loading[0]
         for gallery in galleries:
             gallery.C_QGallery = QGallery(self.main_window, gallery)
         self.galleries += galleries
@@ -233,15 +236,12 @@ class Program(QtGui.QApplication, Logger):
         self.logger.debug("Gallery thread done")
         self.setup_tags()
         self.sort()
-        self.setup_pages()
-        self.show_page()
 
     def show_page(self):
         need_images = []
         for gallery in self.current_page:
             if not gallery.image:
                 need_images.append(gallery)
-        self.logger.info("Need images: %s" % [g.name for g in need_images])
         self.generate_images(need_images)
         self.main_window.show_galleries(self.current_page)
 
@@ -254,7 +254,8 @@ class Program(QtGui.QApplication, Logger):
         self.logger.debug("Starting image thread.")
         self.threads["image"].queue.put(galleries)
 
-    def image_generated(self, galleries):
+    @staticmethod
+    def image_generated(galleries):
         for gallery in galleries:
             gallery.C_QGallery.set_image()
         #     gallery.C_QGallery = C_QGallery(self.main_window, gallery)
@@ -269,7 +270,7 @@ class Program(QtGui.QApplication, Logger):
         galleries = galleries or self.galleries
         self.logger.debug("Starting metadata thread")
         self.main_window.disable_buttons(
-            ["refreshButton", "submitButton", "cancelButton"])
+            ["refreshButton", "saveButton", "cancelButton"])
         self.threads["metadata"].queue.put(galleries)
 
     def get_metadata_done(self):
@@ -280,16 +281,14 @@ class Program(QtGui.QApplication, Logger):
         [g.update_qgallery() for g in self.galleries]
 
     def close(self):
-        # for t in self.threads:
-        #     if not self.threads[t].daemon:
-        #         self.threads[t].kill = True
-        #         self.threads[t].join()
         for gallery in self.galleries:
             gallery.__del__()
         self.quit()
 
-    def sort(self, sort_type=None, descending=False):
-        sort_type = sort_type or self.SortMap.RatingSort
+    def sort(self):
+        self.main_window.ui.sortButton.setDisabled(True)
+        self.hide_page()
+        sort_type = self.main_window.sort_type
         key = None
         if sort_type == self.SortMap.NameSort:
             key = attrgetter("sort_name")
@@ -299,8 +298,13 @@ class Program(QtGui.QApplication, Logger):
             key = attrgetter("sort_rating")
         elif sort_type == self.SortMap.ReadCountSort:
             key = attrgetter("read_count")
-
-        self.galleries.sort(key=key, reverse=descending)
+        elif sort_type == self.SortMap.DateAddedSort:
+            key = attrgetter("time_added")
+        self.galleries.sort(key=key, reverse=self.main_window.sort_is_descending)
+        self.search()
+        # self.setup_pages()
+        # self.show_page()
+        self.main_window.ui.sortButton.setDisabled(False)
 
     def switch_page(self, *args):
         if self.main_window.page_number in [-1, self.page_number]:
@@ -311,8 +315,7 @@ class Program(QtGui.QApplication, Logger):
         self.show_page()
 
     def setup_pages(self, galleries=None):
-        if galleries is None:
-            galleries = self.galleries
+        galleries = galleries or self.galleries
         self.pages = [galleries[i:i + self.PAGE_SIZE]
                       for i in range(0, len(galleries),
                                      self.PAGE_SIZE)] or [[]]
