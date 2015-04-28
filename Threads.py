@@ -239,7 +239,7 @@ class ImageThread(BaseThread):
             dead_galleries = session.query(Database.Gallery).filter(Database.Gallery.dead == True)
             for gallery in dead_galleries:
                 try:
-                    os.remove(dead_galleries.thumbnail_path)
+                    os.remove(gallery.thumbnail_path)
                 except OSError:
                     pass
 
