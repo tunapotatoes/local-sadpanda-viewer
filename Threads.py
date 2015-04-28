@@ -172,7 +172,6 @@ class GalleryThread(BaseThread):
                     gallery_obj = FolderGallery(**gallery)
                     galleries.append(gallery_obj)
             except AssertionError:
-                raise
                 gallery_obj = None
                 pass
             except:
